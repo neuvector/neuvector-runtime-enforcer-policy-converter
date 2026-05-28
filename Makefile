@@ -2,14 +2,14 @@ PLUGIN_PLATFORMS ?= linux/amd64 linux/arm64 darwin/amd64 darwin/arm64
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
 .PHONY: all
-all: test build
+all: test converter
 
-.PHONY: build
-build:
+.PHONY: converter
+converter:
 	go build -ldflags "-X github.com/neuvector/neuvector-runtime-enforcer-policy-converter/internal/converter.version=$(VERSION)" -o ./bin/converter ./cmd/converter
 
 .PHONY: build-cross
-build-cross:
+converter-cross:
 	@mkdir -p bin/
 	@for platform in $(PLUGIN_PLATFORMS); do \
 		os=$$(echo $$platform | cut -d/ -f1); \
