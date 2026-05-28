@@ -1,0 +1,84 @@
+apiVersion: neuvector.com/v1
+kind: NvSecurityRule
+metadata:
+  creationTimestamp: null
+  name: nv.kube-proxy.kube-system
+  namespace: kube-system
+spec:
+  dlp:
+    settings: []
+    status: true
+  egress:
+  - action: allow
+    applications:
+    - any
+    name: external-egress-0
+    ports: tcp/443
+    priority: 0
+    selector:
+      comment: ""
+      name: external
+      original_name: ""
+  file: []
+  ingress: []
+  process:
+  - action: allow
+    allow_update: false
+    name: ip6tables
+    path: /usr/sbin/xtables-nft-multi
+  - action: allow
+    allow_update: false
+    name: ip6tables-restore
+    path: /usr/sbin/xtables-nft-multi
+  - action: allow
+    allow_update: false
+    name: ip6tables-save
+    path: /usr/sbin/xtables-nft-multi
+  - action: allow
+    allow_update: false
+    name: iptables
+    path: /usr/sbin/xtables-nft-multi
+  - action: allow
+    allow_update: false
+    name: iptables-restore
+    path: /usr/sbin/xtables-nft-multi
+  - action: allow
+    allow_update: false
+    name: iptables-save
+    path: /usr/sbin/xtables-nft-multi
+  - action: allow
+    allow_update: false
+    name: kube-proxy
+    path: /usr/local/bin/kube-proxy
+  - action: allow
+    allow_update: false
+    name: pause
+    path: /pause
+  - action: allow
+    allow_update: false
+    name: xtables-nft-multi
+    path: /usr/sbin/xtables-nft-multi
+  process_profile:
+    baseline: zero-drift
+    mode: Discover
+  response: null
+  target:
+    policymode: Discover
+    selector:
+      comment: ""
+      criteria:
+      - key: service
+        op: =
+        value: kube-proxy.kube-system
+      - key: domain
+        op: =
+        value: kube-system
+      grp_band_width: 0
+      grp_sess_cur: 0
+      grp_sess_rate: 0
+      mon_metric: false
+      name: nv.kube-proxy.kube-system
+      original_name: ""
+  waf:
+    settings: []
+    status: true
