@@ -21,7 +21,7 @@ jobs:
           go-version-file: "go.mod"
           cache: false
       - name: Build converter for all platforms
-        run: make converter-cross KUBECTL_PLUGIN_VERSION=${GITHUB_REF_NAME}
+        run: make converter-cross VERSION=${GITHUB_REF_NAME}
       - name: Generate checksums
         run: |
           cd bin/converter
