@@ -1,4 +1,4 @@
-name: Build and Upload kubectl plugin
+name: Build and Upload converter
 
 on:
   workflow_call:
