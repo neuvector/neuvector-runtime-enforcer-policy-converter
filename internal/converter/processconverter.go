@@ -107,19 +107,36 @@ func ReadNvSecurityRules(filepath string) ([]*nvv1.NvSecurityRule, error) {
 	return ret, errs
 }
 
-// TODO: handle zero-drift
-// TODO: handle deny rules
-// TODO: handle non-default services
+func ValidateSecurityRule(nvrule *nvv1.NvSecurityRule) (error, error) {
+	var warnings error
 
-func ValidateSecurityRule(nvrule *nvv1.NvSecurityRule) error {
-	// Verify that it comes with a service criteria.  If not, we can't convert this.
-	if !slices.ContainsFunc(nvrule.Spec.Target.Selector.Criteria, func(item nvv1.CriteriaEntry) bool {
-		if item.Key == "service" && "nv."+item.Value == nvrule.Name {
-			return true
+	// TODO: adjust api definition to avoid pointer.
+	if nvrule.Spec.ProcessProfile != nil &&
+		nvrule.Spec.ProcessProfile.Baseline != nil &&
+		*nvrule.Spec.ProcessProfile.Baseline == "zero-drift" {
+		warnings = errors.Join(
+			errors.New("this NvSecurityRule contains zero-drift baseline, which is incompatible to runtime-enforcer"),
+		)
+	}
+
+	found := false
+	for _, criteria := range nvrule.Spec.Target.Selector.Criteria {
+		// We only handle the first service.
+		if criteria.Key == "service" {
+			if found {
+				return nil, errors.New("duplicate service criteria")
+			}
+			found = true
+
+			if "nv."+criteria.Value != nvrule.Name {
+				return nil, errors.New("non-default service criteria")
+			}
 		}
-		return false
-	}) {
-		return errors.New("no service is defined in criteria")
+	}
+
+	// Verify that it comes with a service criteria.  If not, we can't convert this.
+	if !found {
+		return warnings, errors.New("no service is defined in criteria")
 	}
 
 	var reason string
@@ -135,9 +152,9 @@ func ValidateSecurityRule(nvrule *nvv1.NvSecurityRule) error {
 		}
 		return false
 	}) {
-		return fmt.Errorf("failed to validate security rule: %s", reason)
+		return warnings, fmt.Errorf("failed to validate security rule: %s", reason)
 	}
-	return nil
+	return warnings, nil
 }
 
 func ParseNvServiceName(name string, namespace string) (string, error) {
@@ -416,19 +433,20 @@ func NvSecurityRuleToWorkloadPolicy(
 	ctx context.Context,
 	dynamicClient dynamic.Interface,
 	nvrule *nvv1.NvSecurityRule,
-) (*securityv1alpha1.WorkloadPolicy, string, string, error) {
-	if err := ValidateSecurityRule(nvrule); err != nil {
-		return nil, "", "", fmt.Errorf("failed to validate nv security rule: %w", err)
+) (*securityv1alpha1.WorkloadPolicy, string, string, error, error) {
+	warnings, err := ValidateSecurityRule(nvrule)
+	if err != nil {
+		return nil, "", "", warnings, fmt.Errorf("failed to validate nv security rule: %w", err)
 	}
 
 	workloadName, err := ParseNvServiceName(nvrule.Name, nvrule.Namespace)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("failed to parse service name: %w", err)
+		return nil, "", "", warnings, fmt.Errorf("failed to parse service name: %w", err)
 	}
 
 	containerName, workloadKind, err := SearchContainerName(ctx, dynamicClient, workloadName, nvrule.Namespace)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("failed to search container name: %w", err)
+		return nil, "", "", warnings, fmt.Errorf("failed to search container name: %w", err)
 	}
 
 	ret := &securityv1alpha1.WorkloadPolicy{
@@ -444,5 +462,5 @@ func NvSecurityRuleToWorkloadPolicy(
 		},
 		Status: securityv1alpha1.WorkloadPolicyStatus{},
 	}
-	return ret, workloadKind, workloadName, nil
+	return ret, workloadKind, workloadName, warnings, nil
 }

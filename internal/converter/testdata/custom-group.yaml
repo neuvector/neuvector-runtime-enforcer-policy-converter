@@ -1,0 +1,37 @@
+apiVersion: neuvector.com/v1
+kind: NvSecurityRule
+metadata:
+  creationTimestamp: null
+  name: test-group
+  namespace: default
+spec:
+  dlp:
+    settings: []
+    status: true
+  egress: []
+  file: []
+  ingress: []
+  process:
+  - action: allow
+    allow_update: false
+    name: bash
+    path: /usr/bin/bash
+  response: null
+  target:
+    policymode: N/A
+    selector:
+      comment: ""
+      criteria:
+      - key: service
+        op: =
+        value: opensuse-deployment.default
+      grp_band_width: 0
+      grp_sess_cur: 0
+      grp_sess_rate: 0
+      mon_metric: false
+      name: test-group
+      original_name: ""
+  waf:
+    settings: []
+    status: true
+

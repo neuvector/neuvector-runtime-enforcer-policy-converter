@@ -537,8 +537,6 @@ func newNvSecurityRule(
 	}
 }
 
-// TODO: verify workload name/types
-
 func validatePolicy(t *testing.T, nvRule *nvv1.NvSecurityRule, wp *securityv1alpha1.WorkloadPolicy) {
 	// The two CRDs should have the same name and namespaces.
 	assert.Equal(t, nvRule.Name, wp.Name)
@@ -567,6 +565,7 @@ func TestNvSecurityRuleToWorkloadPolicy(t *testing.T) {
 		setupObjects     []runtime.Object
 		wantErr          bool
 		errContains      string
+		warnContains     string
 		wantWorkloadKind string
 		wantWorkloadName string
 		validatePolicy   func(*testing.T, *nvv1.NvSecurityRule, *securityv1alpha1.WorkloadPolicy)
@@ -578,169 +577,57 @@ func TestNvSecurityRuleToWorkloadPolicy(t *testing.T) {
 				readObjectYaml(t, "./testdata/workloads/opensuse-deployment.yaml", nil),
 			},
 			wantErr:          false,
+			warnContains:     "incompatible to runtime-enforcer",
 			wantWorkloadKind: "Deployment",
 			wantWorkloadName: "opensuse-deployment",
 			validatePolicy:   validatePolicy,
 		},
 		{
-			name: "invalid security rule - service value should match rule name",
-			nvRule: readObjectYaml(t, "./testdata/opensuse-deployment.yaml", func(o runtime.Object) {
-				rule := o.(*nvv1.NvSecurityRule)
-				rule.Spec.Target.Selector.Criteria = []nvv1.CriteriaEntry{
-					{
-						Key:   "service",
-						Op:    "=",
-						Value: "invalid path",
-					},
-				}
-			}),
+			name:         "invalid security rule - non-allow action",
+			nvRule:       readObjectYaml(t, "./testdata/deny.yaml", nil),
+			setupObjects: nil,
+			wantErr:      true,
+			errContains:  "invalid action is detected",
+		},
+		{
+			name:         "invalid security rule - non-default process name",
+			nvRule:       readObjectYaml(t, "./testdata/non-default-process-name.yaml", nil),
+			setupObjects: nil,
+			wantErr:      true,
+			errContains:  "non-default process name is detected",
+		},
+		{
+			name:         "invalid service name - missing nv prefix",
+			nvRule:       readObjectYaml(t, "./testdata/custom-group.yaml", nil),
+			setupObjects: nil,
+			wantErr:      true,
+			errContains:  "non-default service criteria",
+		},
+		{
+			name:         "workload not found",
+			nvRule:       readObjectYaml(t, "./testdata/opensuse-deployment.yaml", nil),
+			setupObjects: []runtime.Object{},
+			wantErr:      true,
+			errContains:  "no workload found",
+		},
+		{
+			name:   "workload with multiple containers",
+			nvRule: readObjectYaml(t, "./testdata/opensuse-deployment.yaml", nil),
 			setupObjects: []runtime.Object{
-				readObjectYaml(t, "./testdata/workloads/opensuse-deployment.yaml", nil),
+				readObjectYaml(t, "./testdata/workloads/opensuse-deployment.yaml", func(o runtime.Object) {
+					deployment := o.(*appsv1.Deployment)
+					deployment.Spec.Template.Spec.Containers = append(
+						deployment.Spec.Template.Spec.Containers,
+						corev1.Container{
+							Name:  "sidecar",
+							Image: "registry.opensuse.org/opensuse/bci/bci-ci:3",
+						},
+					)
+				}),
 			},
 			wantErr:     true,
-			errContains: "no service is defined in criteria",
+			errContains: "multiple containers",
 		},
-		/*
-			{
-				name: "invalid security rule - non-allow action",
-				nvRule: newNvSecurityRule(
-					"nv.myapp.default",
-					"default",
-					"myapp.default",
-					[]nvv1.NvSecurityProcessRule{
-						{
-							Name:   "bash",
-							Path:   "/bin/bash",
-							Action: "deny",
-						},
-					},
-				),
-				setupObjects: []runtime.Object{
-					newUnstructuredDeployment("myapp", "default", []string{"app"}),
-				},
-				wantErr:     true,
-				errContains: "invalid action is detected",
-			},
-			{
-				name: "invalid security rule - non-default process name",
-				nvRule: newNvSecurityRule(
-					"nv.myapp.default",
-					"default",
-					"myapp.default",
-					[]nvv1.NvSecurityProcessRule{
-						{
-							Name:   "custom-name",
-							Path:   "/bin/bash",
-							Action: "allow",
-						},
-					},
-				),
-				setupObjects: []runtime.Object{
-					newUnstructuredDeployment("myapp", "default", []string{"app"}),
-				},
-				wantErr:     true,
-				errContains: "non-default process name is detected",
-			},
-			{
-				name: "invalid service name - missing nv prefix",
-				nvRule: &nvv1.NvSecurityRule{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "myapp.default",
-						Namespace: "default",
-					},
-					Spec: nvv1.NvSecurityRuleSpec{
-						Target: nvv1.NvSecurityTarget{
-							Selector: nvv1.GroupConfig{
-								Name: "myapp.default",
-								Criteria: []nvv1.CriteriaEntry{
-									{
-										Key:   "service",
-										Op:    "=",
-										Value: "different.default",
-									},
-								},
-							},
-						},
-						ProcessRule: []nvv1.NvSecurityProcessRule{
-							{
-								Name:   "bash",
-								Path:   "/bin/bash",
-								Action: "allow",
-							},
-						},
-					},
-				},
-				setupObjects: []runtime.Object{
-					newUnstructuredDeployment("myapp", "default", []string{"app"}),
-				},
-				wantErr:     true,
-				errContains: "doesn't have 'nv.' prefix",
-			},
-			{
-				name: "workload not found",
-				nvRule: newNvSecurityRule(
-					"nv.nonexistent.default",
-					"default",
-					"nonexistent.default",
-					[]nvv1.NvSecurityProcessRule{
-						{
-							Name:   "bash",
-							Path:   "/bin/bash",
-							Action: "allow",
-						},
-					},
-				),
-				setupObjects: []runtime.Object{},
-				wantErr:      true,
-				errContains:  "no workload found",
-			},
-			{
-				name: "workload with multiple containers",
-				nvRule: newNvSecurityRule(
-					"nv.myapp.default",
-					"default",
-					"myapp.default",
-					[]nvv1.NvSecurityProcessRule{
-						{
-							Name:   "bash",
-							Path:   "/bin/bash",
-							Action: "allow",
-						},
-					},
-				),
-				setupObjects: []runtime.Object{
-					newUnstructuredDeployment("myapp", "default", []string{"app", "sidecar"}),
-				},
-				wantErr:     true,
-				errContains: "multiple containers",
-			},
-			{
-				name: "successful conversion with statefulset",
-				nvRule: newNvSecurityRule(
-					"nv.database.production",
-					"production",
-					"database.production",
-					[]nvv1.NvSecurityProcessRule{
-						{
-							Name:   "postgres",
-							Path:   "/usr/bin/postgres",
-							Action: "allow",
-						},
-						{
-							Name:   "pg_ctl",
-							Path:   "/usr/bin/pg_ctl",
-							Action: "allow",
-						},
-					},
-				),
-				setupObjects: []runtime.Object{
-					newUnstructuredStatefulSet("database", "production", []string{"postgres"}),
-				},
-				wantErr:          false,
-				wantWorkloadKind: "StatefulSet",
-				wantWorkloadName: "database",
-			},
-		*/
 	}
 
 	for _, tt := range tests {
@@ -748,7 +635,7 @@ func TestNvSecurityRuleToWorkloadPolicy(t *testing.T) {
 			dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), tt.setupObjects...)
 			ctx := context.Background()
 
-			policy, workloadKind, workloadName, err := converter.NvSecurityRuleToWorkloadPolicy(
+			policy, workloadKind, workloadName, warnings, err := converter.NvSecurityRuleToWorkloadPolicy(
 				ctx,
 				dynamicClient,
 				tt.nvRule.(*nvv1.NvSecurityRule),
@@ -765,6 +652,9 @@ func TestNvSecurityRuleToWorkloadPolicy(t *testing.T) {
 				if tt.validatePolicy != nil {
 					tt.validatePolicy(t, tt.nvRule.(*nvv1.NvSecurityRule), policy)
 				}
+			}
+			if tt.warnContains != "" {
+				require.Contains(t, warnings.Error(), tt.warnContains)
 			}
 		})
 	}
