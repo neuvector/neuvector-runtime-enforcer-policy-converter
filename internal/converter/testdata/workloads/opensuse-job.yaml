@@ -1,0 +1,13 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: opensuse-job
+  namespace: default
+spec:
+  template:
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+      - name: job
+        image: registry.opensuse.org/opensuse/bci/bci-ci:3
+      restartPolicy: OnFailure

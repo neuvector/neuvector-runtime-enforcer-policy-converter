@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: opensuse-daemonset
+  namespace: kube-system
+  labels:
+    app: opensuse
+spec:
+  selector:
+    matchLabels:
+      app: opensuse
+      type: daemonset
+  template:
+    metadata:
+      labels:
+        app: opensuse
+        type: daemonset
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+      - name: opensuse
+        image: registry.opensuse.org/opensuse/bci/bci-ci:3

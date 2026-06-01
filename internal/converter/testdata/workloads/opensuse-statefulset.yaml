@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: opensuse-statefulset
+  namespace: default
+  labels:
+    app: opensuse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opensuse
+      type: statefulset
+  template:
+    metadata:
+      labels:
+        app: opensuse
+        type: statefulset
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+      - name: app
+        image: registry.opensuse.org/opensuse/bci/bci-ci:3

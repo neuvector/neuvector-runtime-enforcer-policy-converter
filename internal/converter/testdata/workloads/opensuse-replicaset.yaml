@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: opensuse-replicaset
+  namespace: default
+  labels:
+    app: opensuse-replicaset
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opensuse
+      type: replicaset
+  template:
+    metadata:
+      labels:
+        app: opensuse
+        type: replicaset
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+      - name: app
+        image: registry.opensuse.org/opensuse/bci/bci-ci:3

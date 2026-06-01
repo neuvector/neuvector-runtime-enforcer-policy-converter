@@ -23,47 +23,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const maxRulePerYamlFile = 500
-
-var (
-	// Workload GVRs (GroupVersionResource)
-	deploymentGVR = schema.GroupVersionResource{
-		Group:    "apps",
-		Version:  "v1",
-		Resource: "deployments",
-	}
-	daemonSetGVR = schema.GroupVersionResource{
-		Group:    "apps",
-		Version:  "v1",
-		Resource: "daemonsets",
-	}
-	statefulSetGVR = schema.GroupVersionResource{
-		Group:    "apps",
-		Version:  "v1",
-		Resource: "statefulsets",
-	}
-	replicaSetGVR = schema.GroupVersionResource{
-		Group:    "apps",
-		Version:  "v1",
-		Resource: "replicasets",
-	}
-	jobGVR = schema.GroupVersionResource{
-		Group:    "batch",
-		Version:  "v1",
-		Resource: "jobs",
-	}
-	cronJobGVR = schema.GroupVersionResource{
-		Group:    "batch",
-		Version:  "v1",
-		Resource: "cronjobs",
-	}
-	podGVR = schema.GroupVersionResource{
-		Group:    "",
-		Version:  "v1",
-		Resource: "pods",
-	}
-)
-
 // NewKubernetesDynamicClient creates a Kubernetes dynamic client using standard kubeconfig resolution.
 // It tries in-cluster config first, then falls back to kubeconfig file (~/.kube/config or KUBECONFIG env var).
 func NewKubernetesDynamicClient() (dynamic.Interface, error) {
@@ -149,10 +108,13 @@ func ReadNvSecurityRules(filepath string) ([]*nvv1.NvSecurityRule, error) {
 }
 
 // TODO: handle zero-drift
+// TODO: handle deny rules
+// TODO: handle non-default services
+
 func ValidateSecurityRule(nvrule *nvv1.NvSecurityRule) error {
 	// Verify that it comes with a service criteria.  If not, we can't convert this.
-	if slices.ContainsFunc(nvrule.Spec.Target.Selector.Criteria, func(item nvv1.CriteriaEntry) bool {
-		if item.Key == "service" && item.Value == nvrule.Name {
+	if !slices.ContainsFunc(nvrule.Spec.Target.Selector.Criteria, func(item nvv1.CriteriaEntry) bool {
+		if item.Key == "service" && "nv."+item.Value == nvrule.Name {
 			return true
 		}
 		return false
@@ -195,7 +157,7 @@ func ParseNvServiceName(name string, namespace string) (string, error) {
 	return s, nil
 }
 
-// workloadMatch represents a found workload resource with its container information
+// workloadMatch represents a found workload resource with its container information.
 type workloadMatch struct {
 	kind          string
 	containerName string
@@ -206,11 +168,13 @@ type workloadMatch struct {
 // Different workload types have containers at different paths:
 // - Pod: .spec.containers
 // - Deployment/DaemonSet/StatefulSet/ReplicaSet/Job: .spec.template.spec.containers
-// - CronJob: .spec.jobTemplate.spec.template.spec.containers
+// - CronJob: .spec.jobTemplate.spec.template.spec.containers.
+//
+//nolint:goconst // The strings like "Pod" or "containers" are self-explanatory.
 func extractContainersFromUnstructured(
 	obj *unstructured.Unstructured,
 	kind string,
-) ([]interface{}, error) {
+) ([]any, error) {
 	var containersPath []string
 
 	switch kind {
@@ -236,10 +200,10 @@ func extractContainersFromUnstructured(
 }
 
 // validateAndExtractContainer checks that a workload has exactly one container
-// and returns a workloadMatch if valid, or an error if not
+// and returns a workloadMatch if valid, or an error if not.
 func validateAndExtractContainer(
 	kind string,
-	containersRaw []interface{},
+	containersRaw []any,
 ) (*workloadMatch, error) {
 	if len(containersRaw) == 0 {
 		return nil, fmt.Errorf("%s has no containers", kind)
@@ -248,7 +212,7 @@ func validateAndExtractContainer(
 	if len(containersRaw) > 1 {
 		containerNames := make([]string, len(containersRaw))
 		for i, c := range containersRaw {
-			containerMap, ok := c.(map[string]interface{})
+			containerMap, ok := c.(map[string]any)
 			if !ok {
 				containerNames[i] = "<unknown>"
 				continue
@@ -269,7 +233,7 @@ func validateAndExtractContainer(
 	}
 
 	// Extract single container name
-	containerMap, ok := containersRaw[0].(map[string]interface{})
+	containerMap, ok := containersRaw[0].(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid container structure in %s", kind)
 	}
@@ -289,7 +253,7 @@ func validateAndExtractContainer(
 	}, nil
 }
 
-// searchWorkloadByGVR searches for a workload resource using dynamic client and GVR
+// searchWorkloadByGVR searches for a workload resource using dynamic client and GVR.
 func searchWorkloadByGVR(
 	ctx context.Context,
 	dynamicClient dynamic.Interface,
@@ -323,6 +287,55 @@ func NvProcessRulesToWorkloadPolicyRules(nvrules []nvv1.NvSecurityProcessRule) *
 	return &ret
 }
 
+type supportedGVR struct {
+	gvr  schema.GroupVersionResource
+	kind string
+}
+
+//nolint:goconst // strings like "apps" are self-explanatory.
+func getSupportedGVRs() []supportedGVR {
+	return []supportedGVR{
+		{
+			schema.GroupVersionResource{
+				Group:    "apps",
+				Version:  "v1",
+				Resource: "deployments",
+			},
+			"Deployment",
+		},
+		{schema.GroupVersionResource{
+			Group:    "apps",
+			Version:  "v1",
+			Resource: "daemonsets",
+		}, "DaemonSet"},
+		{schema.GroupVersionResource{
+			Group:    "apps",
+			Version:  "v1",
+			Resource: "statefulsets",
+		}, "StatefulSet"},
+		{schema.GroupVersionResource{
+			Group:    "apps",
+			Version:  "v1",
+			Resource: "replicasets",
+		}, "ReplicaSet"},
+		{schema.GroupVersionResource{
+			Group:    "batch",
+			Version:  "v1",
+			Resource: "jobs",
+		}, "Job"},
+		{schema.GroupVersionResource{
+			Group:    "batch",
+			Version:  "v1",
+			Resource: "cronjobs",
+		}, "CronJob"},
+		{schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: "pods",
+		}, "Pod"},
+	}
+}
+
 // SearchContainerName searches for a workload resource by name across multiple resource types
 // and returns the container name and workload kind if exactly one resource with one container is found.
 //
@@ -331,7 +344,7 @@ func NvProcessRulesToWorkloadPolicyRules(nvrules []nvv1.NvSecurityProcessRule) *
 // Returns error if:
 // - No workload found with the given name
 // - Multiple workloads found with the same name (across different types)
-// - The found workload has multiple containers
+// - The found workload has multiple containers.
 func SearchContainerName(
 	ctx context.Context,
 	dynamicClient dynamic.Interface,
@@ -341,18 +354,7 @@ func SearchContainerName(
 	var matches []workloadMatch
 
 	// Define search configurations (GVR + Kind)
-	searchConfigs := []struct {
-		gvr  schema.GroupVersionResource
-		kind string
-	}{
-		{deploymentGVR, "Deployment"},
-		{daemonSetGVR, "DaemonSet"},
-		{statefulSetGVR, "StatefulSet"},
-		{replicaSetGVR, "ReplicaSet"},
-		{jobGVR, "Job"},
-		{cronJobGVR, "CronJob"},
-		{podGVR, "Pod"},
-	}
+	searchConfigs := getSupportedGVRs()
 
 	// Search all resource types
 	for _, config := range searchConfigs {
@@ -395,6 +397,14 @@ func SearchContainerName(
 			workloadName,
 			namespace,
 			strings.Join(kinds, ", "),
+		)
+	}
+
+	if matches[0].kind == "Pod" {
+		return "", "", fmt.Errorf(
+			"runtime-enforcer doesn't support NeuVector service created from pod '%s' in namespace '%s'",
+			workloadName,
+			namespace,
 		)
 	}
 
