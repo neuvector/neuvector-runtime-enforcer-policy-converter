@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	nvv1 "github.com/neuvector/neuvector/controller/k8sapi/v1"
-	"github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	securityv1alpha1 "github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -51,58 +50,77 @@ func NewKubernetesDynamicClient() (dynamic.Interface, error) {
 	return dynamicClient, nil
 }
 
-func ReadNvSecurityRules(filepath string) ([]*nvv1.NvSecurityRule, error) {
-	var errs error
-	var ret []*nvv1.NvSecurityRule
-
-	// TODO: support streaming
-	data, err := os.ReadFile(filepath)
+func addSchemes() error {
+	err := corev1.AddToScheme(scheme.Scheme)
 	if err != nil {
-		return nil, err
-	}
-
-	// TODO: support multiple yaml in one file
-	decode := scheme.Codecs.UniversalDeserializer().Decode
-	err = corev1.AddToScheme(scheme.Scheme)
-	if err != nil {
-		return nil, err
+		return err
 	}
 	err = nvv1.AddToScheme(scheme.Scheme)
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func ReadNvSecurityRules(filepaths []string) ([]*nvv1.NvSecurityRule, error) {
+	var errs error
+	var err error
+	var ret []*nvv1.NvSecurityRule
+
+	// Return empty result for empty input
+	if len(filepaths) == 0 {
+		return ret, nil
+	}
+
+	// Register schemes once
+	decode := scheme.Codecs.UniversalDeserializer().Decode
+	if err = addSchemes(); err != nil {
 		return nil, err
 	}
 
-	obj, _, err := decode(data, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode item: %w", err)
-	}
+	// Process each file
+	for _, filepath := range filepaths {
+		var data []byte
+		var obj runtime.Object
+		data, err = os.ReadFile(filepath)
+		if err != nil {
+			errs = errors.Join(errs, fmt.Errorf("failed to read file %s: %w", filepath, err))
+			continue
+		}
 
-	switch item := obj.(type) {
-	// When exporting from NV, it will be a corev1.List.
-	case *corev1.List:
-		for _, subitem := range item.Items {
-			var rawRule runtime.Object
-			rawRule, _, err = decode(subitem.Raw, nil, nil)
-			if err != nil {
-				errs = errors.Join(errs, err)
-				continue
-			}
-			rule, ok := rawRule.(*nvv1.NvSecurityRule)
-			if !ok {
-				errs = errors.Join(errs, errors.New("failed to parse NvSecurityRule"))
-				continue
-			}
-			ret = append(ret, rule)
+		obj, _, err = decode(data, nil, nil)
+		if err != nil {
+			errs = errors.Join(errs, fmt.Errorf("failed to decode file %s: %w", filepath, err))
+			continue
 		}
-	// When used in CRD, it will be an item.
-	case *nvv1.NvSecurityRule:
-		ret = append(ret, item)
-	case *nvv1.NvSecurityRuleList:
-		for _, rule := range item.Items {
-			ret = append(ret, &rule)
+
+		switch item := obj.(type) {
+		// When exporting from NV, it will be a corev1.List.
+		case *corev1.List:
+			for _, subitem := range item.Items {
+				var rawRule runtime.Object
+				rawRule, _, err = decode(subitem.Raw, nil, nil)
+				if err != nil {
+					errs = errors.Join(errs, fmt.Errorf("failed to decode item in %s: %w", filepath, err))
+					continue
+				}
+				rule, ok := rawRule.(*nvv1.NvSecurityRule)
+				if !ok {
+					errs = errors.Join(errs, fmt.Errorf("failed to parse NvSecurityRule in %s", filepath))
+					continue
+				}
+				ret = append(ret, rule)
+			}
+		// When used in CRD, it will be an item.
+		case *nvv1.NvSecurityRule:
+			ret = append(ret, item)
+		case *nvv1.NvSecurityRuleList:
+			for _, rule := range item.Items {
+				ret = append(ret, &rule)
+			}
+		default:
+			errs = errors.Join(errs, fmt.Errorf("invalid object type in %s: %T", filepath, item))
 		}
-	default:
-		errs = errors.Join(errs, fmt.Errorf("invalid object type: %T", item))
 	}
 
 	return ret, errs
@@ -132,6 +150,17 @@ func ValidateSecurityRule(nvrule *nvv1.NvSecurityRule) (error, error) {
 			if "nv."+criteria.Value != nvrule.Name {
 				return nil, errors.New("non-default service criteria")
 			}
+		}
+	}
+
+	for _, rule := range nvrule.Spec.ProcessRule {
+		if filepath.Base(rule.Path) != rule.Name {
+			warnings = errors.Join(
+				fmt.Errorf(
+					"non-default process name is detected: %s. The executable path will be used instead in the WorkloadPolicy",
+					rule.Name,
+				),
+			)
 		}
 	}
 
@@ -437,7 +466,7 @@ func NvSecurityRuleToWorkloadPolicy(
 	mode string,
 ) (*securityv1alpha1.WorkloadPolicy, string, string, error, error) {
 	// Validate mode parameter
-	if mode != v1alpha1.PolicyModeMonitor && mode != v1alpha1.PolicyModeProtect {
+	if mode != securityv1alpha1.PolicyModeMonitor && mode != securityv1alpha1.PolicyModeProtect {
 		return nil, "", "", nil, fmt.Errorf("invalid mode %q: must be 'monitor' or 'protect'", mode)
 	}
 

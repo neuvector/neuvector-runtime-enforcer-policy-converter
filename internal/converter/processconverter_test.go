@@ -17,7 +17,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion/scheme"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
@@ -54,49 +53,74 @@ func TestMain(m *testing.M) {
 func TestReadNvSecurityRules(t *testing.T) {
 	tests := []struct {
 		name        string
-		filepath    string
+		filepaths   []string
 		wantErr     bool
 		wantCount   int
 		description string
 	}{
 		{
 			name:        "valid simple yaml",
-			filepath:    "testdata/simple.yaml",
+			filepaths:   []string{"testdata/simple.yaml"},
 			wantErr:     false,
 			wantCount:   1,
 			description: "should successfully read a valid NvSecurityRuleList exported from NeuVector",
 		},
 		{
 			name:        "valid simple yaml",
-			filepath:    "testdata/simple-crd.yaml",
+			filepaths:   []string{"testdata/simple-crd.yaml"},
 			wantErr:     false,
 			wantCount:   1,
 			description: "should successfully read a valid NvSecurityRule CRD",
 		},
 		{
 			name:        "non-existent file",
-			filepath:    "testdata/does-not-exist.yaml",
+			filepaths:   []string{"testdata/does-not-exist.yaml"},
 			wantErr:     true,
 			wantCount:   0,
 			description: "should return error when file doesn't exist",
+		},
+		{
+			name:        "multiple valid files",
+			filepaths:   []string{"testdata/simple.yaml", "testdata/simple-crd.yaml"},
+			wantErr:     false,
+			wantCount:   2,
+			description: "should successfully read multiple NvSecurityRule files and combine results",
+		},
+		{
+			name:        "mixed valid and invalid files",
+			filepaths:   []string{"testdata/simple.yaml", "testdata/does-not-exist.yaml"},
+			wantErr:     true,
+			wantCount:   1,
+			description: "should return partial results with error when some files fail",
+		},
+		{
+			name:        "empty filepath slice",
+			filepaths:   []string{},
+			wantErr:     false,
+			wantCount:   0,
+			description: "should return empty result without error for empty input",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Convert relative path to absolute for the test
-			testFilePath := filepath.Join("../../internal/converter", tt.filepath)
-			if !filepath.IsAbs(tt.filepath) && tt.filepath != "testdata/does-not-exist.yaml" {
-				cwd, err := os.Getwd()
-				if err != nil {
-					t.Fatalf("failed to get working directory: %v", err)
+			// Convert relative paths to absolute for the test
+			var testFilePaths []string
+			for _, fp := range tt.filepaths {
+				testFilePath := filepath.Join("../../internal/converter", fp)
+				if !filepath.IsAbs(fp) && fp != "testdata/does-not-exist.yaml" {
+					cwd, err := os.Getwd()
+					if err != nil {
+						t.Fatalf("failed to get working directory: %v", err)
+					}
+					testFilePath = filepath.Join(cwd, testFilePath)
+				} else if fp == "testdata/does-not-exist.yaml" {
+					testFilePath = fp
 				}
-				testFilePath = filepath.Join(cwd, testFilePath)
-			} else if tt.filepath == "testdata/does-not-exist.yaml" {
-				testFilePath = tt.filepath
+				testFilePaths = append(testFilePaths, testFilePath)
 			}
 
-			rules, err := converter.ReadNvSecurityRules(testFilePath)
+			rules, err := converter.ReadNvSecurityRules(testFilePaths)
 
 			// Check error expectation
 			if (err != nil) != tt.wantErr {
@@ -494,46 +518,6 @@ func TestSearchContainerName(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-// newNvSecurityRule creates a test NvSecurityRule with the given parameters.
-func newNvSecurityRule(
-	name, namespace, serviceName string,
-	processRules []nvv1.NvSecurityProcessRule,
-) *nvv1.NvSecurityRule {
-	baseline := "zero-drift"
-	mode := "Discover"
-
-	return &nvv1.NvSecurityRule{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: nvv1.NvSecurityRuleSpec{
-			Target: nvv1.NvSecurityTarget{
-				Selector: nvv1.GroupConfig{
-					Name: name,
-					Criteria: []nvv1.CriteriaEntry{
-						{
-							Key:   "service",
-							Op:    "=",
-							Value: serviceName,
-						},
-						{
-							Key:   "domain",
-							Op:    "=",
-							Value: namespace,
-						},
-					},
-				},
-			},
-			ProcessRule: processRules,
-			ProcessProfile: &nvv1.NvSecurityProcessProfile{
-				Baseline: &baseline,
-				Mode:     &mode,
-			},
-		},
 	}
 }
 
