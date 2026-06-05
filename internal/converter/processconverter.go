@@ -327,6 +327,11 @@ func NvProcessRulesToWorkloadPolicyRules(nvrules []nvv1.NvSecurityProcessRule) *
 	for _, rule := range nvrules {
 		ret.Executables.Allowed = append(ret.Executables.Allowed, rule.Path)
 	}
+
+	// this removes duplicate items in the slice.
+	slices.Sort(ret.Executables.Allowed)
+	ret.Executables.Allowed = slices.Compact(ret.Executables.Allowed)
+
 	return &ret
 }
 
