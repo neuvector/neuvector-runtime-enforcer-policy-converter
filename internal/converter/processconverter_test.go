@@ -639,6 +639,7 @@ func TestNvSecurityRuleToWorkloadPolicy(t *testing.T) {
 				ctx,
 				dynamicClient,
 				tt.nvRule.(*nvv1.NvSecurityRule),
+				securityv1alpha1.PolicyModeMonitor,
 			)
 
 			if tt.wantErr {

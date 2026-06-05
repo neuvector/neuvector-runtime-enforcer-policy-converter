@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	nvv1 "github.com/neuvector/neuvector/controller/k8sapi/v1"
+	"github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	securityv1alpha1 "github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -433,7 +434,13 @@ func NvSecurityRuleToWorkloadPolicy(
 	ctx context.Context,
 	dynamicClient dynamic.Interface,
 	nvrule *nvv1.NvSecurityRule,
+	mode string,
 ) (*securityv1alpha1.WorkloadPolicy, string, string, error, error) {
+	// Validate mode parameter
+	if mode != v1alpha1.PolicyModeMonitor && mode != v1alpha1.PolicyModeProtect {
+		return nil, "", "", nil, fmt.Errorf("invalid mode %q: must be 'monitor' or 'protect'", mode)
+	}
+
 	warnings, err := ValidateSecurityRule(nvrule)
 	if err != nil {
 		return nil, "", "", warnings, fmt.Errorf("failed to validate nv security rule: %w", err)
@@ -455,7 +462,7 @@ func NvSecurityRuleToWorkloadPolicy(
 			Namespace: nvrule.Namespace,
 		},
 		Spec: securityv1alpha1.WorkloadPolicySpec{
-			Mode: "monitor", // TODO: export this to securityv1alpha1
+			Mode: mode,
 			RulesByContainer: map[string]*securityv1alpha1.WorkloadPolicyRules{
 				containerName: NvProcessRulesToWorkloadPolicyRules(nvrule.Spec.ProcessRule),
 			},
