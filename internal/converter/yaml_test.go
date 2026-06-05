@@ -70,10 +70,6 @@ func TestWriteWorkloadPoliciesToYAML(t *testing.T) {
 			// Verify output contains expected YAML structure
 			output := buf.String()
 
-			// Should contain List kind
-			assert.Contains(t, output, "kind: List")
-			assert.Contains(t, output, "apiVersion: v1")
-
 			// For non-empty cases, verify WorkloadPolicy items
 			if tt.wantCount > 0 {
 				assert.Contains(t, output, "kind: WorkloadPolicy")
@@ -84,6 +80,11 @@ func TestWriteWorkloadPoliciesToYAML(t *testing.T) {
 					assert.Contains(t, output, policy.Name)
 					assert.Contains(t, output, policy.Namespace)
 					assert.Contains(t, output, "mode: "+policy.Spec.Mode)
+				}
+
+				// Verify document separator for multiple policies
+				if tt.wantCount > 1 {
+					assert.Contains(t, output, "---")
 				}
 			}
 		})
@@ -156,9 +157,9 @@ func TestWriteWorkloadPoliciesToYAML_RoundTrip(t *testing.T) {
 	// Verify output contains all expected fields
 	output := buf.String()
 
-	// Verify List structure
-	assert.Contains(t, output, "kind: List")
+	// Verify WorkloadPolicy structure
 	assert.Contains(t, output, "kind: WorkloadPolicy")
+	assert.Contains(t, output, "apiVersion: security.rancher-sandbox.io/v1alpha1")
 
 	// Verify policy metadata
 	assert.Contains(t, output, policy.Name)
@@ -172,6 +173,9 @@ func TestWriteWorkloadPoliciesToYAML_RoundTrip(t *testing.T) {
 	// Verify the output is valid YAML (parseable)
 	assert.NotEmpty(t, output)
 	assert.Contains(t, output, "rulesByContainer")
+
+	// Should not contain "---" for single policy
+	assert.NotContains(t, output, "---")
 }
 
 func createTestPolicy(name, namespace, mode string) *securityv1alpha1.WorkloadPolicy {
