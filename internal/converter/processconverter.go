@@ -176,10 +176,6 @@ func ValidateSecurityRule(nvrule *nvv1.NvSecurityRule) (error, error) {
 			reason = fmt.Sprintf("invalid action is detected: %s", item.Action)
 			return true
 		}
-		if filepath.Base(item.Path) != item.Name {
-			reason = fmt.Sprintf("non-default process name is detected: %s", item.Name)
-			return true
-		}
 		return false
 	}) {
 		return warnings, fmt.Errorf("failed to validate security rule: %s", reason)

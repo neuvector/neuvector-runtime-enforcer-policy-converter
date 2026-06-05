@@ -574,11 +574,15 @@ func TestNvSecurityRuleToWorkloadPolicy(t *testing.T) {
 			errContains:  "invalid action is detected",
 		},
 		{
-			name:         "invalid security rule - non-default process name",
-			nvRule:       readObjectYaml(t, "./testdata/non-default-process-name.yaml", nil),
-			setupObjects: nil,
-			wantErr:      true,
-			errContains:  "non-default process name is detected",
+			name:   "invalid security rule - non-default process name",
+			nvRule: readObjectYaml(t, "./testdata/non-default-process-name.yaml", nil),
+			setupObjects: []runtime.Object{
+				readObjectYaml(t, "./testdata/workloads/opensuse-deployment.yaml", nil),
+			},
+			wantErr:          false,
+			warnContains:     "non-default process name is detected",
+			wantWorkloadKind: "Deployment",
+			wantWorkloadName: "opensuse-deployment",
 		},
 		{
 			name:         "invalid service name - missing nv prefix",
