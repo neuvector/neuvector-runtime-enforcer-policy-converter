@@ -50,14 +50,45 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+type ReadNvSecurityRulesTestCase struct {
+	name        string
+	filepaths   []string
+	wantErr     bool
+	wantCount   int
+	description string
+}
+
+func testReadNvSecurirtRules(t *testing.T, tt ReadNvSecurityRulesTestCase) {
+	// Convert relative paths to absolute for the test
+	var testFilePaths []string
+	for _, fp := range tt.filepaths {
+		testFilePath := filepath.Join("../../internal/converter", fp)
+		if !filepath.IsAbs(fp) && fp != "testdata/does-not-exist.yaml" {
+			cwd, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("failed to get working directory: %v", err)
+			}
+			testFilePath = filepath.Join(cwd, testFilePath)
+		} else if fp == "testdata/does-not-exist.yaml" {
+			testFilePath = fp
+		}
+		testFilePaths = append(testFilePaths, testFilePath)
+	}
+
+	rules, err := converter.ReadNvSecurityRules(testFilePaths)
+
+	if tt.wantErr {
+		require.Error(t, err)
+	} else {
+		require.Len(t, rules, tt.wantCount)
+		if len(rules) > 0 {
+			validateSimpleYamlRule(t, rules[0])
+		}
+	}
+}
+
 func TestReadNvSecurityRules(t *testing.T) {
-	tests := []struct {
-		name        string
-		filepaths   []string
-		wantErr     bool
-		wantCount   int
-		description string
-	}{
+	tests := []ReadNvSecurityRulesTestCase{
 		{
 			name:        "valid simple yaml",
 			filepaths:   []string{"testdata/simple.yaml"},
@@ -104,39 +135,7 @@ func TestReadNvSecurityRules(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Convert relative paths to absolute for the test
-			var testFilePaths []string
-			for _, fp := range tt.filepaths {
-				testFilePath := filepath.Join("../../internal/converter", fp)
-				if !filepath.IsAbs(fp) && fp != "testdata/does-not-exist.yaml" {
-					cwd, err := os.Getwd()
-					if err != nil {
-						t.Fatalf("failed to get working directory: %v", err)
-					}
-					testFilePath = filepath.Join(cwd, testFilePath)
-				} else if fp == "testdata/does-not-exist.yaml" {
-					testFilePath = fp
-				}
-				testFilePaths = append(testFilePaths, testFilePath)
-			}
-
-			rules, err := converter.ReadNvSecurityRules(testFilePaths)
-
-			// Check error expectation
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ReadNvSecurityRules() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			// Check count of returned rules
-			if got := len(rules); got != tt.wantCount {
-				t.Errorf("ReadNvSecurityRules() returned %d rules, want %d", got, tt.wantCount)
-			}
-
-			// Additional validation for successful cases
-			if !tt.wantErr && len(rules) > 0 {
-				validateSimpleYamlRule(t, rules[0])
-			}
+			testReadNvSecurirtRules(t, tt)
 		})
 	}
 }

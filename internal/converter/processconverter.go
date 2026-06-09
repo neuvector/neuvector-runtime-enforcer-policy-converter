@@ -62,6 +62,59 @@ func addSchemes() error {
 	return nil
 }
 
+func ReadNvSecurityRulesFile(
+	filepath string,
+	rules []*nvv1.NvSecurityRule,
+	errs error,
+) ([]*nvv1.NvSecurityRule, error) {
+	var err error
+
+	decode := scheme.Codecs.UniversalDeserializer().Decode
+
+	var data []byte
+	var obj runtime.Object
+	data, err = os.ReadFile(filepath)
+	if err != nil {
+		errs = errors.Join(errs, fmt.Errorf("failed to read file %s: %w", filepath, err))
+		return nil, errs
+	}
+
+	obj, _, err = decode(data, nil, nil)
+	if err != nil {
+		errs = errors.Join(errs, fmt.Errorf("failed to decode file %s: %w", filepath, err))
+		return nil, errs
+	}
+
+	switch item := obj.(type) {
+	// When exporting from NV, it will be a corev1.List.
+	case *corev1.List:
+		for _, subitem := range item.Items {
+			var rawRule runtime.Object
+			rawRule, _, err = decode(subitem.Raw, nil, nil)
+			if err != nil {
+				errs = errors.Join(errs, fmt.Errorf("failed to decode item in %s: %w", filepath, err))
+				continue
+			}
+			rule, ok := rawRule.(*nvv1.NvSecurityRule)
+			if !ok {
+				errs = errors.Join(errs, fmt.Errorf("failed to parse NvSecurityRule in %s", filepath))
+				continue
+			}
+			rules = append(rules, rule)
+		}
+	// When used in CRD, it will be an item.
+	case *nvv1.NvSecurityRule:
+		rules = append(rules, item)
+	case *nvv1.NvSecurityRuleList:
+		for _, rule := range item.Items {
+			rules = append(rules, &rule)
+		}
+	default:
+		errs = errors.Join(errs, fmt.Errorf("invalid object type in %s: %T", filepath, item))
+	}
+	return rules, errs
+}
+
 func ReadNvSecurityRules(filepaths []string) ([]*nvv1.NvSecurityRule, error) {
 	var errs error
 	var err error
@@ -73,54 +126,13 @@ func ReadNvSecurityRules(filepaths []string) ([]*nvv1.NvSecurityRule, error) {
 	}
 
 	// Register schemes once
-	decode := scheme.Codecs.UniversalDeserializer().Decode
 	if err = addSchemes(); err != nil {
 		return nil, err
 	}
 
 	// Process each file
 	for _, filepath := range filepaths {
-		var data []byte
-		var obj runtime.Object
-		data, err = os.ReadFile(filepath)
-		if err != nil {
-			errs = errors.Join(errs, fmt.Errorf("failed to read file %s: %w", filepath, err))
-			continue
-		}
-
-		obj, _, err = decode(data, nil, nil)
-		if err != nil {
-			errs = errors.Join(errs, fmt.Errorf("failed to decode file %s: %w", filepath, err))
-			continue
-		}
-
-		switch item := obj.(type) {
-		// When exporting from NV, it will be a corev1.List.
-		case *corev1.List:
-			for _, subitem := range item.Items {
-				var rawRule runtime.Object
-				rawRule, _, err = decode(subitem.Raw, nil, nil)
-				if err != nil {
-					errs = errors.Join(errs, fmt.Errorf("failed to decode item in %s: %w", filepath, err))
-					continue
-				}
-				rule, ok := rawRule.(*nvv1.NvSecurityRule)
-				if !ok {
-					errs = errors.Join(errs, fmt.Errorf("failed to parse NvSecurityRule in %s", filepath))
-					continue
-				}
-				ret = append(ret, rule)
-			}
-		// When used in CRD, it will be an item.
-		case *nvv1.NvSecurityRule:
-			ret = append(ret, item)
-		case *nvv1.NvSecurityRuleList:
-			for _, rule := range item.Items {
-				ret = append(ret, &rule)
-			}
-		default:
-			errs = errors.Join(errs, fmt.Errorf("invalid object type in %s: %T", filepath, item))
-		}
+		ret, errs = ReadNvSecurityRulesFile(filepath, ret, errs)
 	}
 
 	return ret, errs

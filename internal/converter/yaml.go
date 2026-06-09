@@ -37,13 +37,13 @@ func WriteWorkloadPoliciesToYAML(policies []*securityv1alpha1.WorkloadPolicy, wr
 
 		// Add separator between documents (not before the first one)
 		if i > 0 {
-			if _, err := writer.Write([]byte("---\n")); err != nil {
+			if _, err = writer.Write([]byte("---\n")); err != nil {
 				return fmt.Errorf("failed to write document separator: %w", err)
 			}
 		}
 
 		// Serialize the policy
-		if err := serializer.Encode(policy, writer); err != nil {
+		if err = serializer.Encode(policy, writer); err != nil {
 			return fmt.Errorf("failed to encode policy %s/%s: %w", policy.Namespace, policy.Name, err)
 		}
 	}
