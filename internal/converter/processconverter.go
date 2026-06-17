@@ -23,6 +23,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+type Warning error
+
 // NewKubernetesDynamicClient creates a Kubernetes dynamic client using standard kubeconfig resolution.
 // It tries in-cluster config first, then falls back to kubeconfig file (~/.kube/config or KUBECONFIG env var).
 func NewKubernetesDynamicClient() (dynamic.Interface, error) {
@@ -138,14 +140,14 @@ func ReadNvSecurityRules(filepaths []string) ([]*nvv1.NvSecurityRule, error) {
 	return ret, errs
 }
 
-func ValidateSecurityRule(nvrule *nvv1.NvSecurityRule) (error, error) {
-	var warnings error
+func ValidateSecurityRule(nvrule *nvv1.NvSecurityRule) ([]Warning, error) {
+	var warnings []Warning
 
 	// TODO: adjust api definition to avoid pointer.
 	if nvrule.Spec.ProcessProfile != nil &&
 		nvrule.Spec.ProcessProfile.Baseline != nil &&
 		*nvrule.Spec.ProcessProfile.Baseline == "zero-drift" {
-		warnings = errors.Join(
+		warnings = append(warnings,
 			errors.New("this NvSecurityRule contains zero-drift baseline, which is incompatible to runtime-enforcer"),
 		)
 	}
@@ -167,7 +169,7 @@ func ValidateSecurityRule(nvrule *nvv1.NvSecurityRule) (error, error) {
 
 	for _, rule := range nvrule.Spec.ProcessRule {
 		if filepath.Base(rule.Path) != rule.Name {
-			warnings = errors.Join(
+			warnings = append(warnings,
 				fmt.Errorf(
 					"non-default process name is detected: %s. The executable path will be used instead in the WorkloadPolicy",
 					rule.Name,
@@ -477,7 +479,7 @@ func NvSecurityRuleToWorkloadPolicy(
 	dynamicClient dynamic.Interface,
 	nvrule *nvv1.NvSecurityRule,
 	mode string,
-) (*securityv1alpha1.WorkloadPolicy, string, string, error, error) {
+) (*securityv1alpha1.WorkloadPolicy, string, string, []Warning, error) {
 	// Validate mode parameter
 	if mode != securityv1alpha1.PolicyModeMonitor && mode != securityv1alpha1.PolicyModeProtect {
 		return nil, "", "", nil, fmt.Errorf("invalid mode %q: must be 'monitor' or 'protect'", mode)

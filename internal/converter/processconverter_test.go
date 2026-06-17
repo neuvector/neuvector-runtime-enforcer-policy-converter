@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/neuvector/neuvector-runtime-enforcer-policy-converter/internal/converter"
@@ -642,7 +643,14 @@ func TestNvSecurityRuleToWorkloadPolicy(t *testing.T) {
 				}
 			}
 			if tt.warnContains != "" {
-				require.Contains(t, warnings.Error(), tt.warnContains)
+				require.True(t, func() bool {
+					for _, warning := range warnings {
+						if strings.Contains(warning.Error(), tt.warnContains) {
+							return true
+						}
+					}
+					return false
+				}())
 			}
 		})
 	}

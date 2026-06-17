@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/neuvector/neuvector-runtime-enforcer-policy-converter/internal/converter"
 	v1 "github.com/neuvector/neuvector/controller/k8sapi/v1"
@@ -53,7 +54,7 @@ func convertAction(ctx context.Context, c *cli.Command) error {
 
 	// Convert each rule to WorkloadPolicy
 	var policies []*v1alpha1.WorkloadPolicy
-	var conversionWarnings error
+	var conversionWarnings []converter.Warning
 	var conversionErrors error
 
 	for _, rule := range rules {
@@ -66,22 +67,21 @@ func convertAction(ctx context.Context, c *cli.Command) error {
 			continue
 		}
 		if warns != nil {
-			conversionWarnings = errors.Join(
-				conversionWarnings,
-				fmt.Errorf("warning for rule %s/%s: %w", rule.Namespace, rule.Name, warns),
-			)
+			conversionWarnings = slices.Concat(conversionWarnings, warns)
 		}
 		policies = append(policies, policy)
 	}
 
 	// Report warnings
-	if conversionWarnings != nil {
-		fmt.Fprintf(os.Stderr, "Warnings:\n%v\n", conversionWarnings)
+	if len(conversionWarnings) > 0 {
+		fmt.Fprintf(os.Stderr, "Warnings:\n")
+
+		fmt.Fprintf(os.Stderr, "\t%v\n\n", conversionWarnings)
 	}
 
 	// Report conversion errors
 	if conversionErrors != nil {
-		fmt.Fprintf(os.Stderr, "Errors:\n%v\n", conversionErrors)
+		fmt.Fprintf(os.Stderr, "Errors:\n\t%v\n\n", conversionErrors)
 	}
 
 	// Check if we have any successfully converted policies
