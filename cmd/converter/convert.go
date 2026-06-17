@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"slices"
 
 	"github.com/neuvector/neuvector-runtime-enforcer-policy-converter/internal/converter"
 	v1 "github.com/neuvector/neuvector/controller/k8sapi/v1"
@@ -42,51 +41,57 @@ func convertAction(ctx context.Context, c *cli.Command) error {
 	// Get all input file paths
 	filepaths := c.Args().Slice()
 
-	// Read all NvSecurityRules from input files
-	rules, err = converter.ReadNvSecurityRules(filepaths)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: errors occurred while reading files: %v\n", err)
-	}
-
-	if len(rules) == 0 {
-		return errors.New("no valid NvSecurityRule found in input files")
-	}
-
 	// Convert each rule to WorkloadPolicy
 	var policies []*v1alpha1.WorkloadPolicy
 	var conversionWarnings []converter.Warning
-	var conversionErrors error
+	var conversionErrors []error
 
-	for _, rule := range rules {
-		policy, _, _, warns, errs := converter.NvSecurityRuleToWorkloadPolicy(ctx, dynamicClient, rule, mode)
-		if errs != nil {
-			conversionErrors = errors.Join(
+	for _, filepath := range filepaths {
+		// Read all NvSecurityRules from input files
+		rules, err = converter.ReadNvSecurityRules([]string{filepath}) // TODO: change the prototype to string
+		if err != nil {
+			conversionErrors = append(
 				conversionErrors,
-				fmt.Errorf("failed to convert rule %s/%s: %w", rule.Namespace, rule.Name, errs),
+				err,
 			)
 			continue
 		}
-		if warns != nil {
-			conversionWarnings = slices.Concat(conversionWarnings, warns)
+
+		if len(rules) == 0 {
+			conversionErrors = append(
+				conversionErrors,
+				fmt.Errorf("%s: no NvSecurityRule resources are found", filepath),
+			)
+			continue
 		}
-		policies = append(policies, policy)
+
+		for _, rule := range rules {
+			policy, _, _, warns, errs := converter.NvSecurityRuleToWorkloadPolicy(ctx, dynamicClient, rule, mode)
+			if errs != nil {
+				conversionErrors = append(
+					conversionErrors,
+					fmt.Errorf("%s: failed to convert rule %s/%s: %w", filepath, rule.Namespace, rule.Name, errs),
+				)
+				continue
+			}
+			for _, warning := range warns {
+				conversionWarnings = append(conversionWarnings, fmt.Errorf("%s: %w", filepath, warning))
+			}
+			policies = append(policies, policy)
+		}
 	}
 
 	// Report warnings
-	if len(conversionWarnings) > 0 {
-		fmt.Fprintf(os.Stderr, "Warnings:\n")
-
-		fmt.Fprintf(os.Stderr, "\t%v\n\n", conversionWarnings)
+	for _, warning := range conversionWarnings {
+		fmt.Fprintf(os.Stderr, "WARNING: %v\n", warning)
 	}
-
-	// Report conversion errors
-	if conversionErrors != nil {
-		fmt.Fprintf(os.Stderr, "Errors:\n\t%v\n\n", conversionErrors)
+	for _, convertErr := range conversionErrors {
+		fmt.Fprintf(os.Stderr, "ERROR: %v\n", convertErr)
 	}
 
 	// Check if we have any successfully converted policies
 	if len(policies) == 0 {
-		return errors.New("failed to convert any rules")
+		return errors.New("no rule is converted")
 	}
 
 	// Determine output writer
