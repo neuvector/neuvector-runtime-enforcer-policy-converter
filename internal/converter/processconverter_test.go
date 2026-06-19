@@ -543,28 +543,25 @@ func validatePolicy(t *testing.T, nvRule *nvv1.NvSecurityRule, wp *securityv1alp
 }
 
 func TestNvSecurityRuleToWorkloadPolicy(t *testing.T) {
-	tests := []struct {
-		name             string
-		nvRule           runtime.Object
-		setupObjects     []runtime.Object
-		wantErr          bool
-		errContains      string
-		warnContains     string
-		wantWorkloadKind string
-		wantWorkloadName string
-		validatePolicy   func(*testing.T, *nvv1.NvSecurityRule, *securityv1alpha1.WorkloadPolicy)
-	}{
+	type testcase struct {
+		name           string
+		nvRule         runtime.Object
+		setupObjects   []runtime.Object
+		wantErr        bool
+		errContains    string
+		warnContains   string
+		validatePolicy func(*testing.T, *nvv1.NvSecurityRule, *securityv1alpha1.WorkloadPolicy)
+	}
+	tests := []testcase{
 		{
 			name:   "successful conversion with deployment",
 			nvRule: readObjectYaml(t, "./testdata/opensuse-deployment.yaml", nil),
 			setupObjects: []runtime.Object{
 				readObjectYaml(t, "./testdata/workloads/opensuse-deployment.yaml", nil),
 			},
-			wantErr:          false,
-			warnContains:     "incompatible to runtime-enforcer",
-			wantWorkloadKind: "Deployment",
-			wantWorkloadName: "opensuse-deployment",
-			validatePolicy:   validatePolicy,
+			wantErr:        false,
+			warnContains:   "incompatible to runtime-enforcer",
+			validatePolicy: validatePolicy,
 		},
 		{
 			name:         "invalid security rule - non-allow action",
@@ -579,10 +576,8 @@ func TestNvSecurityRuleToWorkloadPolicy(t *testing.T) {
 			setupObjects: []runtime.Object{
 				readObjectYaml(t, "./testdata/workloads/opensuse-deployment.yaml", nil),
 			},
-			wantErr:          false,
-			warnContains:     "non-default process name is detected",
-			wantWorkloadKind: "Deployment",
-			wantWorkloadName: "opensuse-deployment",
+			wantErr:      false,
+			warnContains: "non-default process name is detected",
 		},
 		{
 			name:         "invalid service name - missing nv prefix",
@@ -618,40 +613,42 @@ func TestNvSecurityRuleToWorkloadPolicy(t *testing.T) {
 		},
 	}
 
+	verify := func(t *testing.T, tt testcase) {
+		dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), tt.setupObjects...)
+		ctx := context.Background()
+
+		policy, warnings, err := converter.NvSecurityRuleToWorkloadPolicy(
+			ctx,
+			dynamicClient,
+			tt.nvRule.(*nvv1.NvSecurityRule),
+			securityv1alpha1.PolicyModeMonitor,
+		)
+
+		if tt.wantErr {
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.errContains)
+		} else {
+			require.NoError(t, err)
+			// Run custom validation if provided
+			if tt.validatePolicy != nil {
+				tt.validatePolicy(t, tt.nvRule.(*nvv1.NvSecurityRule), policy)
+			}
+		}
+		if tt.warnContains != "" {
+			require.True(t, func() bool {
+				for _, warning := range warnings {
+					if strings.Contains(warning.Error(), tt.warnContains) {
+						return true
+					}
+				}
+				return false
+			}())
+		}
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), tt.setupObjects...)
-			ctx := context.Background()
-
-			policy, workloadKind, workloadName, warnings, err := converter.NvSecurityRuleToWorkloadPolicy(
-				ctx,
-				dynamicClient,
-				tt.nvRule.(*nvv1.NvSecurityRule),
-				securityv1alpha1.PolicyModeMonitor,
-			)
-
-			if tt.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.errContains)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.wantWorkloadKind, workloadKind)
-				require.Equal(t, tt.wantWorkloadName, workloadName)
-				// Run custom validation if provided
-				if tt.validatePolicy != nil {
-					tt.validatePolicy(t, tt.nvRule.(*nvv1.NvSecurityRule), policy)
-				}
-			}
-			if tt.warnContains != "" {
-				require.True(t, func() bool {
-					for _, warning := range warnings {
-						if strings.Contains(warning.Error(), tt.warnContains) {
-							return true
-						}
-					}
-					return false
-				}())
-			}
+			verify(t, tt)
 		})
 	}
 }

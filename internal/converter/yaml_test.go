@@ -144,7 +144,7 @@ func TestWriteWorkloadPoliciesToYAML_RoundTrip(t *testing.T) {
 		},
 	}
 
-	policy, _, _, warnings, err := converter.NvSecurityRuleToWorkloadPolicy(ctx, dynamicClient, nvrule, "monitor")
+	policy, warnings, err := converter.NvSecurityRuleToWorkloadPolicy(ctx, dynamicClient, nvrule, "monitor")
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	require.NotNil(t, policy)

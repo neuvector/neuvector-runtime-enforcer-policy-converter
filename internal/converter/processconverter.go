@@ -67,8 +67,8 @@ func addSchemes() error {
 func ReadNvSecurityRulesFile(
 	filepath string,
 	rules []*nvv1.NvSecurityRule,
-	errs error,
 ) ([]*nvv1.NvSecurityRule, error) {
+	var joinedErrs error
 	var err error
 
 	decode := scheme.Codecs.UniversalDeserializer().Decode
@@ -77,14 +77,12 @@ func ReadNvSecurityRulesFile(
 	var obj runtime.Object
 	data, err = os.ReadFile(filepath)
 	if err != nil {
-		errs = errors.Join(errs, fmt.Errorf("failed to read file %s: %w", filepath, err))
-		return nil, errs
+		return nil, fmt.Errorf("failed to read file %s: %w", filepath, err)
 	}
 
 	obj, _, err = decode(data, nil, nil)
 	if err != nil {
-		errs = errors.Join(errs, fmt.Errorf("failed to decode file %s: %w", filepath, err))
-		return nil, errs
+		return nil, fmt.Errorf("failed to decode file %s: %w", filepath, err)
 	}
 
 	switch item := obj.(type) {
@@ -94,12 +92,12 @@ func ReadNvSecurityRulesFile(
 			var rawRule runtime.Object
 			rawRule, _, err = decode(subitem.Raw, nil, nil)
 			if err != nil {
-				errs = errors.Join(errs, fmt.Errorf("failed to decode item in %s: %w", filepath, err))
+				joinedErrs = errors.Join(joinedErrs, fmt.Errorf("failed to decode item in %s: %w", filepath, err))
 				continue
 			}
 			rule, ok := rawRule.(*nvv1.NvSecurityRule)
 			if !ok {
-				errs = errors.Join(errs, fmt.Errorf("failed to parse NvSecurityRule in %s", filepath))
+				joinedErrs = errors.Join(joinedErrs, fmt.Errorf("failed to parse NvSecurityRule in %s", filepath))
 				continue
 			}
 			rules = append(rules, rule)
@@ -112,13 +110,13 @@ func ReadNvSecurityRulesFile(
 			rules = append(rules, &rule)
 		}
 	default:
-		errs = errors.Join(errs, fmt.Errorf("invalid object type in %s: %T", filepath, item))
+		joinedErrs = errors.Join(joinedErrs, fmt.Errorf("invalid object type in %s: %T", filepath, item))
 	}
-	return rules, errs
+	return rules, joinedErrs
 }
 
 func ReadNvSecurityRules(filepaths []string) ([]*nvv1.NvSecurityRule, error) {
-	var errs error
+	var joinedErrs error
 	var err error
 	var ret []*nvv1.NvSecurityRule
 
@@ -134,19 +132,27 @@ func ReadNvSecurityRules(filepaths []string) ([]*nvv1.NvSecurityRule, error) {
 
 	// Process each file
 	for _, filepath := range filepaths {
-		ret, errs = ReadNvSecurityRulesFile(filepath, ret, errs)
+		ret, err = ReadNvSecurityRulesFile(filepath, ret)
+		joinedErrs = errors.Join(joinedErrs, err)
 	}
 
-	return ret, errs
+	return ret, joinedErrs
+}
+
+func containZeroDriftPolicy(nvrule *nvv1.NvSecurityRule) bool {
+	if nvrule.Spec.ProcessProfile != nil &&
+		nvrule.Spec.ProcessProfile.Baseline != nil &&
+		*nvrule.Spec.ProcessProfile.Baseline == "zero-drift" {
+		return true
+	}
+	return false
 }
 
 func ValidateSecurityRule(nvrule *nvv1.NvSecurityRule) ([]Warning, error) {
 	var warnings []Warning
 
 	// TODO: adjust api definition to avoid pointer.
-	if nvrule.Spec.ProcessProfile != nil &&
-		nvrule.Spec.ProcessProfile.Baseline != nil &&
-		*nvrule.Spec.ProcessProfile.Baseline == "zero-drift" {
+	if containZeroDriftPolicy(nvrule) {
 		warnings = append(warnings,
 			errors.New("this NvSecurityRule contains zero-drift baseline, which is incompatible to runtime-enforcer"),
 		)
@@ -267,25 +273,10 @@ func validateAndExtractContainer(
 	}
 
 	if len(containersRaw) > 1 {
-		containerNames := make([]string, len(containersRaw))
-		for i, c := range containersRaw {
-			containerMap, ok := c.(map[string]any)
-			if !ok {
-				containerNames[i] = "<unknown>"
-				continue
-			}
-			name, found, err := unstructured.NestedString(containerMap, "name")
-			if err != nil || !found {
-				containerNames[i] = "<unknown>"
-				continue
-			}
-			containerNames[i] = name
-		}
 		return nil, fmt.Errorf(
-			"%s has multiple containers (%d): %s",
+			"%s has multiple containers (%d)",
 			kind,
 			len(containersRaw),
-			strings.Join(containerNames, ", "),
 		)
 	}
 
@@ -479,25 +470,20 @@ func NvSecurityRuleToWorkloadPolicy(
 	dynamicClient dynamic.Interface,
 	nvrule *nvv1.NvSecurityRule,
 	mode string,
-) (*securityv1alpha1.WorkloadPolicy, string, string, []Warning, error) {
-	// Validate mode parameter
-	if mode != securityv1alpha1.PolicyModeMonitor && mode != securityv1alpha1.PolicyModeProtect {
-		return nil, "", "", nil, fmt.Errorf("invalid mode %q: must be 'monitor' or 'protect'", mode)
-	}
-
+) (*securityv1alpha1.WorkloadPolicy, []Warning, error) {
 	warnings, err := ValidateSecurityRule(nvrule)
 	if err != nil {
-		return nil, "", "", warnings, fmt.Errorf("failed to validate nv security rule: %w", err)
+		return nil, warnings, fmt.Errorf("failed to validate nv security rule: %w", err)
 	}
 
 	workloadName, err := ParseNvServiceName(nvrule.Name, nvrule.Namespace)
 	if err != nil {
-		return nil, "", "", warnings, fmt.Errorf("failed to parse service name: %w", err)
+		return nil, warnings, fmt.Errorf("failed to parse service name: %w", err)
 	}
 
-	containerName, workloadKind, err := SearchContainerName(ctx, dynamicClient, workloadName, nvrule.Namespace)
+	containerName, _, err := SearchContainerName(ctx, dynamicClient, workloadName, nvrule.Namespace)
 	if err != nil {
-		return nil, "", "", warnings, fmt.Errorf("failed to search container name: %w", err)
+		return nil, warnings, fmt.Errorf("failed to search container name: %w", err)
 	}
 
 	ret := &securityv1alpha1.WorkloadPolicy{
@@ -513,5 +499,5 @@ func NvSecurityRuleToWorkloadPolicy(
 		},
 		Status: securityv1alpha1.WorkloadPolicyStatus{},
 	}
-	return ret, workloadKind, workloadName, warnings, nil
+	return ret, warnings, nil
 }

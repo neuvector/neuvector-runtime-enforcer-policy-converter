@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/neuvector/neuvector-runtime-enforcer-policy-converter/internal/converter"
 	v1 "github.com/neuvector/neuvector/controller/k8sapi/v1"
@@ -12,6 +13,48 @@ import (
 	"github.com/urfave/cli/v3"
 	"k8s.io/client-go/dynamic"
 )
+
+func convertFile(
+	ctx context.Context,
+	dynamicClient dynamic.Interface,
+	filepath string,
+	mode string,
+) ([]*v1alpha1.WorkloadPolicy, []converter.Warning, []error) {
+	var err error
+	var rules []*v1.NvSecurityRule
+	var policies []*v1alpha1.WorkloadPolicy
+	// Read all NvSecurityRules from input files
+	rules, err = converter.ReadNvSecurityRules([]string{filepath}) // TODO: change the prototype to string
+	if err != nil {
+		return nil, nil, []error{err}
+	}
+
+	if len(rules) == 0 {
+		return nil, nil, []error{fmt.Errorf("%s: no NvSecurityRule resources are found", filepath)}
+	}
+
+	var conversionWarnings []converter.Warning
+	var retErr []error
+
+	for _, rule := range rules {
+		var policy *v1alpha1.WorkloadPolicy
+		var warns []converter.Warning
+
+		policy, warns, err = converter.NvSecurityRuleToWorkloadPolicy(ctx, dynamicClient, rule, mode)
+		if err != nil {
+			retErr = append(
+				retErr,
+				fmt.Errorf("%s: failed to convert rule %s/%s: %w", filepath, rule.Namespace, rule.Name, err),
+			)
+			continue
+		}
+		for _, warning := range warns {
+			conversionWarnings = append(conversionWarnings, fmt.Errorf("%s: %w", filepath, warning))
+		}
+		policies = append(policies, policy)
+	}
+	return policies, conversionWarnings, retErr
+}
 
 func convertAction(ctx context.Context, c *cli.Command) error {
 	var err error
@@ -47,38 +90,19 @@ func convertAction(ctx context.Context, c *cli.Command) error {
 	var conversionErrors []error
 
 	for _, filepath := range filepaths {
-		// Read all NvSecurityRules from input files
-		rules, err = converter.ReadNvSecurityRules([]string{filepath}) // TODO: change the prototype to string
-		if err != nil {
-			conversionErrors = append(
-				conversionErrors,
-				err,
-			)
-			continue
+		var newPolicies []*v1alpha1.WorkloadPolicy
+		var warns []converter.Warning
+		var errs []error
+		newPolicies, warns, errs = convertFile(ctx, dynamicClient, filepath, mode)
+		if errs != nil {
+			conversionErrors = slices.Concat(conversionErrors, errs)
 		}
 
-		if len(rules) == 0 {
-			conversionErrors = append(
-				conversionErrors,
-				fmt.Errorf("%s: no NvSecurityRule resources are found", filepath),
-			)
-			continue
+		if warns != nil {
+			conversionWarnings = slices.Concat(conversionWarnings, warns)
 		}
 
-		for _, rule := range rules {
-			policy, _, _, warns, errs := converter.NvSecurityRuleToWorkloadPolicy(ctx, dynamicClient, rule, mode)
-			if errs != nil {
-				conversionErrors = append(
-					conversionErrors,
-					fmt.Errorf("%s: failed to convert rule %s/%s: %w", filepath, rule.Namespace, rule.Name, errs),
-				)
-				continue
-			}
-			for _, warning := range warns {
-				conversionWarnings = append(conversionWarnings, fmt.Errorf("%s: %w", filepath, warning))
-			}
-			policies = append(policies, policy)
-		}
+		policies = slices.Concat(policies, newPolicies)
 	}
 
 	// Report warnings
