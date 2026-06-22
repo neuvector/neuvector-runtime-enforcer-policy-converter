@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: opensuse-cronjob
+  namespace: default
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          terminationGracePeriodSeconds: 1
+          containers:
+          - name: opensuse
+            image: registry.opensuse.org/opensuse/bci/bci-ci:3
+          restartPolicy: Never

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: opensuse-pod
+  namespace: default
+  labels:
+    app: opensuse-pod
+spec:
+  terminationGracePeriodSeconds: 1
+  containers:
+  - name: app
+    image: registry.opensuse.org/opensuse/bci/bci-ci:3

@@ -1,0 +1,54 @@
+apiVersion: neuvector.com/v1
+kind: NvSecurityRule
+metadata:
+  creationTimestamp: null
+  name: nv.opensuse-deployment.default
+  namespace: default
+spec:
+  dlp:
+    settings: []
+    status: true
+  egress: []
+  file: []
+  ingress: []
+  process:
+  - action: allow
+    allow_update: false
+    name: bash
+    path: /usr/bin/bash
+  - action: allow
+    allow_update: false
+    name: ls
+    path: /usr/bin/ls
+  - action: allow
+    allow_update: false
+    name: pause
+    path: /pause
+  - action: allow
+    allow_update: false
+    name: sleep
+    path: /usr/bin/sleep
+  process_profile:
+    baseline: zero-drift
+    mode: Discover
+  response: null
+  target:
+    policymode: Discover
+    selector:
+      comment: ""
+      criteria:
+      - key: service
+        op: =
+        value: opensuse-deployment.default
+      - key: domain
+        op: =
+        value: default
+      grp_band_width: 0
+      grp_sess_cur: 0
+      grp_sess_rate: 0
+      mon_metric: false
+      name: nv.opensuse-deployment.default
+      original_name: ""
+  waf:
+    settings: []
+    status: true
