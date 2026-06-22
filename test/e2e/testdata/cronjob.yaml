@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: e2e-test-app
+  namespace: default
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          terminationGracePeriodSeconds: 1
+          containers:
+          - name: app
+            image: registry.k8s.io/pause:3.9
