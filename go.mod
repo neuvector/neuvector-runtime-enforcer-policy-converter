@@ -6,7 +6,7 @@ require (
 	github.com/neuvector/neuvector/controller/k8sapi v1.0.0
 	github.com/rancher-sandbox/runtime-enforcer v0.6.1-0.20260604150337-ee1c1325ca82
 	github.com/stretchr/testify v1.11.1
-	github.com/urfave/cli/v3 v3.9.0
+	github.com/urfave/cli/v3 v3.10.0
 	k8s.io/api v0.36.1
 	k8s.io/apimachinery v0.36.1
 	k8s.io/client-go v0.36.1
