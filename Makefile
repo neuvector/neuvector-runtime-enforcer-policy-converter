@@ -28,5 +28,5 @@ test: ## Run tests.
 	go test ./... -race -test.v -coverprofile coverage/cover.out -covermode=atomic
 
 .PHONY: test-e2e
-test-e2e: all ## Run e2e tests (creates a KinD cluster automatically).
+test-e2e: converter ## Run e2e tests (creates a KinD cluster automatically).
 	go test -tags e2e ./test/e2e/... -v -count=1 -timeout 10m
