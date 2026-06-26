@@ -16,7 +16,7 @@ import (
 //nolint:gochecknoglobals
 var (
 	testEnv      env.Environment
-	converterBin = "../../bin/converter"
+	converterBin = "../../bin/nvrules2re"
 )
 
 const e2ePrefix = "nv-converter-e2e"
