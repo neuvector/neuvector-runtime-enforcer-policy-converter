@@ -10,8 +10,8 @@ import (
 
 func main() {
 	app := &cli.Command{
-		Name:  "converter",
-		Usage: "Convert NeuVector security rules to Runtime Enforcer WorkloadPolicy",
+		Name:  "nvrules2re",
+		Usage: "Convert NeuVector Process Profile rules to Runtime Enforcer WorkloadPolicy",
 		Commands: []*cli.Command{
 			{
 				Name:  "convert",

@@ -31,7 +31,7 @@ func WriteWorkloadPoliciesToYAML(policies []*securityv1alpha1.WorkloadPolicy, wr
 	for i, policy := range policies {
 		// Ensure TypeMeta is set
 		policy.TypeMeta = metav1.TypeMeta{
-			APIVersion: "security.rancher-sandbox.io/v1alpha1",
+			APIVersion: securityv1alpha1.GroupVersion.String(),
 			Kind:       "WorkloadPolicy",
 		}
 

@@ -6,22 +6,22 @@ all: test converter
 
 .PHONY: converter
 converter:
-	go build -ldflags "-X github.com/neuvector/neuvector-runtime-enforcer-policy-converter/internal/converter.version=$(VERSION)" -o ./bin/converter ./cmd/converter
+	go build -ldflags "-X github.com/neuvector/neuvector-runtime-enforcer-policy-converter/internal/converter.version=$(VERSION)" -o ./bin/nvrules2re ./cmd/nvrules2re
 
-.PHONY: build-cross
+.PHONY: converter-cross
 converter-cross:
 	@mkdir -p bin/
 	@for platform in $(PLUGIN_PLATFORMS); do \
 		os=$$(echo $$platform | cut -d/ -f1); \
 		arch=$$(echo $$platform | cut -d/ -f2); \
-		out=bin/converter/converter-$$os-$$arch; \
+		out=bin/nvrules2re/nvrules2re-$$os-$$arch; \
 		echo "Building $$out ..."; \
 		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build \
 			-ldflags "-X github.com/neuvector/neuvector-runtime-enforcer-policy-converter/internal/converter.version=$(VERSION)" \
 			-o $$out \
-			./cmd/converter; \
+			./cmd/nvrules2re; \
 	done
-	@echo "Cross-build complete. Artifacts in bin/converter/"
+	@echo "Cross-build complete. Artifacts in bin/nvrules2re/"
 
 .PHONY: test
 test: ## Run tests.

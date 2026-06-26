@@ -24,15 +24,15 @@ jobs:
         run: make converter-cross VERSION=${GITHUB_REF_NAME}
       - name: Generate checksums
         run: |
-          cd bin/converter
-          for f in converter-*; do
+          cd bin/nvrules2re
+          for f in nvrules2re-*; do
             sha256sum "$f" > "$f.sha256"
           done
       - name: Upload converter artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: converter
-          path: bin/converter
+          path: bin/nvrules2re
           if-no-files-found: error
 
   create-release:
@@ -82,14 +82,14 @@ jobs:
             let fs = require('fs');
             let path = require('path');
             let files = [
-                'converter-linux-amd64',
-                'converter-linux-amd64.sha256',
-                'converter-linux-arm64',
-                'converter-linux-arm64.sha256',
-                'converter-darwin-amd64',
-                'converter-darwin-amd64.sha256',
-                'converter-darwin-arm64',
-                'converter-darwin-arm64.sha256',
+                'nvrules2re-linux-amd64',
+                'nvrules2re-linux-amd64.sha256',
+                'nvrules2re-linux-arm64',
+                'nvrules2re-linux-arm64.sha256',
+                'nvrules2re-darwin-amd64',
+                'nvrules2re-darwin-amd64.sha256',
+                'nvrules2re-darwin-arm64',
+                'nvrules2re-darwin-arm64.sha256',
                 ]
             const {RELEASE_ID} = process.env
             for (const file of files) {
