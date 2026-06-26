@@ -1,0 +1,18 @@
+apiVersion: neuvector.com/v1
+kind: NvSecurityRule
+metadata:
+  name: nv.nonexistent-app.default
+  namespace: default
+spec:
+  target:
+    selector:
+      name: nv.nonexistent-app.default
+      criteria:
+      - key: service
+        value: nonexistent-app.default
+        op: "="
+  process:
+  - name: ls
+    path: /bin/ls
+    action: allow
+    allow_update: false

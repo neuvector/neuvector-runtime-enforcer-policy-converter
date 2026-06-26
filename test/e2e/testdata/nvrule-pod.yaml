@@ -1,0 +1,18 @@
+apiVersion: neuvector.com/v1
+kind: NvSecurityRule
+metadata:
+  name: nv.e2e-test-app.e2e-converter-pod
+  namespace: e2e-converter-pod
+spec:
+  target:
+    selector:
+      name: nv.e2e-test-app.e2e-converter-pod
+      criteria:
+      - key: service
+        value: e2e-test-app.e2e-converter-pod
+        op: "="
+  process:
+  - name: ls
+    path: /bin/ls
+    action: allow
+    allow_update: false
