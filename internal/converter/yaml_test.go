@@ -73,7 +73,7 @@ func TestWriteWorkloadPoliciesToYAML(t *testing.T) {
 			// For non-empty cases, verify WorkloadPolicy items
 			if tt.wantCount > 0 {
 				assert.Contains(t, output, "kind: WorkloadPolicy")
-				assert.Contains(t, output, "apiVersion: security.rancher-sandbox.io/v1alpha1")
+				assert.Contains(t, output, "apiVersion: security.rancher.io/v1alpha1")
 
 				// Verify each policy appears in output
 				for _, policy := range tt.policies {
@@ -159,7 +159,7 @@ func TestWriteWorkloadPoliciesToYAML_RoundTrip(t *testing.T) {
 
 	// Verify WorkloadPolicy structure
 	assert.Contains(t, output, "kind: WorkloadPolicy")
-	assert.Contains(t, output, "apiVersion: security.rancher-sandbox.io/v1alpha1")
+	assert.Contains(t, output, "apiVersion: security.rancher.io/v1alpha1")
 
 	// Verify policy metadata
 	assert.Contains(t, output, policy.Name)
@@ -184,7 +184,7 @@ func createTestPolicy(name, namespace, mode string) *securityv1alpha1.WorkloadPo
 
 	return &securityv1alpha1.WorkloadPolicy{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "security.rancher-sandbox.io/v1alpha1",
+			APIVersion: "security.rancher.io/v1alpha1",
 			Kind:       "WorkloadPolicy",
 		},
 		ObjectMeta: metav1.ObjectMeta{

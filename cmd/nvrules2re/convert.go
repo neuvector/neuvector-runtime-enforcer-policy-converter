@@ -19,18 +19,18 @@ func convertFile(
 	dynamicClient dynamic.Interface,
 	filepath string,
 	mode string,
-) ([]*v1alpha1.WorkloadPolicy, []converter.Warning, []error) {
+) ([]*v1alpha1.WorkloadPolicy, int, []converter.Warning, []error) {
 	var err error
 	var rules []*v1.NvSecurityRule
 	var policies []*v1alpha1.WorkloadPolicy
 	// Read all NvSecurityRules from input files
 	rules, err = converter.ReadNvSecurityRules([]string{filepath}) // TODO: change the prototype to string
 	if err != nil {
-		return nil, nil, []error{err}
+		return nil, 0, nil, []error{err}
 	}
 
 	if len(rules) == 0 {
-		return nil, nil, []error{fmt.Errorf("%s: no NvSecurityRule resources are found", filepath)}
+		return nil, 0, nil, []error{fmt.Errorf("%s: no NvSecurityRule resources are found", filepath)}
 	}
 
 	var conversionWarnings []converter.Warning
@@ -53,13 +53,12 @@ func convertFile(
 		}
 		policies = append(policies, policy)
 	}
-	return policies, conversionWarnings, retErr
+	return policies, len(rules), conversionWarnings, retErr
 }
 
 func convertAction(ctx context.Context, c *cli.Command) error {
 	var err error
 	var dynamicClient dynamic.Interface
-	var rules []*v1.NvSecurityRule
 
 	// Validate that we have at least one input file
 	if c.Args().Len() == 0 {
@@ -88,12 +87,14 @@ func convertAction(ctx context.Context, c *cli.Command) error {
 	var policies []*v1alpha1.WorkloadPolicy
 	var conversionWarnings []converter.Warning
 	var conversionErrors []error
+	var totalnvRules int
 
 	for _, filepath := range filepaths {
 		var newPolicies []*v1alpha1.WorkloadPolicy
+		var numNvRules int
 		var warns []converter.Warning
 		var errs []error
-		newPolicies, warns, errs = convertFile(ctx, dynamicClient, filepath, mode)
+		newPolicies, numNvRules, warns, errs = convertFile(ctx, dynamicClient, filepath, mode)
 		if errs != nil {
 			conversionErrors = slices.Concat(conversionErrors, errs)
 		}
@@ -103,6 +104,7 @@ func convertAction(ctx context.Context, c *cli.Command) error {
 		}
 
 		policies = slices.Concat(policies, newPolicies)
+		totalnvRules += numNvRules
 	}
 
 	// Report warnings
@@ -142,7 +144,7 @@ func convertAction(ctx context.Context, c *cli.Command) error {
 	// Print summary to stderr (so stdout stays clean for YAML output)
 	fmt.Fprintf(os.Stderr, "\nConversion summary:\n")
 	fmt.Fprintf(os.Stderr, "  Input files: %d\n", len(filepaths))
-	fmt.Fprintf(os.Stderr, "  Rules read: %d\n", len(rules))
+	fmt.Fprintf(os.Stderr, "  Rules read: %d\n", totalnvRules)
 	fmt.Fprintf(os.Stderr, "  Policies converted: %d\n", len(policies))
 	if output != "-" {
 		fmt.Fprintf(os.Stderr, "  Output written to: %s\n", output)
