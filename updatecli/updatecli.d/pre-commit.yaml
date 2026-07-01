@@ -57,9 +57,9 @@ scms:
       commitusingapi: true
       commitmessage:
         type: "chore"
-        title: "update runtime enforcer pre-commit-config.yaml"
+        title: "update pre-commit-config.yaml"
         hidecredit: true
-        footers: "Signed-off-by: RuntimeEnforcer bot <runtime-enforcer-bot@users.noreply.github.com>"
+        footers: "Signed-off-by: NeuVectorRuntimeEnforcerPolicyConverter bot <runtime-enforcer-bot@users.noreply.github.com>"
 
 actions:
   default:
