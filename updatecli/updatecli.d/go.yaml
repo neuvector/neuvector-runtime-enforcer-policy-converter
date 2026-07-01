@@ -83,4 +83,4 @@ scms:
         scope: deps
         title: "update Golang version"
         hidecredit: true
-        footers: "Signed-off-by: RuntimeEnforcer bot <runtime-enforcer-bot@users.noreply.github.com>"
+        footers: "Signed-off-by: NeuVectorRuntimeEnforcerPolicyConverter bot <neuvector-runtime-enforcer-policy-converter-bot@users.noreply.github.com>"
