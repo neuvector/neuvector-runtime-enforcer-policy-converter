@@ -1,0 +1,25 @@
+name: NeuVector Runtime Enforcer Policy Converter Release
+title: "NeuVector Runtime Enforcer Policy Converter <VERSION> release"
+description: Issue with all the items needed to release a new version of NeuVector Runtime Enforcer Policy Converter Release
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue tracks the release of a new version of NeuVector Runtime Enforcer Policy Converter. 
+
+  - type: textarea
+    attributes:
+      label: Checklist
+      description: Base checklist for the release process. Please, add or remove items as needed.
+      value: |
+        This issue tracks the release of a new version of NeuVector Runtime Enforcer Policy Converter. Please follow the checklist below to ensure a smooth release process.
+        - [ ] Make sure CI is green
+        - [ ] Create a *draft* release with the version tag and generate release notes.
+        - [ ] Tag neuvector-runtime-enforcer-policy-converter (manually, through `git tag` and `git push --tags`)
+        - [ ] Verify the "Create a new release for the converter (release.yml)" workflow completes without problem
+          - [ ] Verify the draft release is now published
+          - [ ] Verify that the converter binaries are attached to the release
+
+        ### My updatecli CI jobs won't start!
+        Try closing and reopening the associated PR.
