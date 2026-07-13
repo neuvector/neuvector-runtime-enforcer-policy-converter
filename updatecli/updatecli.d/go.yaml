@@ -24,20 +24,6 @@ targets:
     spec:
       file: go.mod
 
-  dockerfile:
-    name: "deps(go): update Docker image tag"
-    kind: dockerfile
-    sourceid: go
-    scmid: default
-    spec:
-      files:
-        - package/Dockerfile.controller
-        - package/Dockerfile.agent
-        - package/Dockerfile.debugger
-      instruction:
-        keyword: FROM
-        matcher: docker.io/library/golang
-
   pre-commit-yaml:
     name: 'deps(go): update pre-commit Go version to {{ source "go" }}'
     sourceid: go
@@ -59,7 +45,7 @@ actions:
       mergemethod: squash
       description: |
         Automatic Golang version {{ source "go" }} update.
-        This PR has been created by the automation used to automatically update the Golang version in the runtime-enforcer project
+        This PR has been created by the automation used to automatically update the Golang version in the neuvector-runtime-enforcer-policy-converter project
         REMEMBER IF YOU WANT TO MERGE IN A SINGLE COMMIT CHANGES AND VERSION BUMP, YOU MUST SQUASH THE COMMIT BEFORE MERGING THIS PR!
       draft: false
       labels:
@@ -73,7 +59,7 @@ scms:
       user: "{{ .github.author }}"
       email: "{{ .github.email }}"
       owner: "{{ requiredEnv .github.owner }}"
-      repository: "runtime-enforcer"
+      repository: "neuvector-runtime-enforcer-policy-converter"
       token: "{{ requiredEnv .github.token }}"
       username: "{{ requiredEnv .github.user }}"
       branch: "{{ .github.branch }}"
