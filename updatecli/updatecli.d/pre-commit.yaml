@@ -50,7 +50,7 @@ scms:
       user: "{{ .github.author }}"
       email: "{{ .github.email }}"
       owner: "{{ requiredEnv .github.owner }}"
-      repository: "runtime-enforcer"
+      repository: "neuvector-runtime-enforcer-policy-converter"
       token: "{{ requiredEnv .github.token }}"
       username: "{{ requiredEnv .github.user }}"
       branch: "{{ .github.branch }}"
@@ -59,7 +59,7 @@ scms:
         type: "chore"
         title: "update pre-commit-config.yaml"
         hidecredit: true
-        footers: "Signed-off-by: NeuVectorRuntimeEnforcerPolicyConverter bot <runtime-enforcer-bot@users.noreply.github.com>"
+        footers: "Signed-off-by: NeuVectorRuntimeEnforcerPolicyConverter bot <neuvector-runtime-enforcer-policy-converter-bot@users.noreply.github.com@users.noreply.github.com>"
 
 actions:
   default:
