@@ -1,6 +1,6 @@
 module github.com/neuvector/neuvector-runtime-enforcer-policy-converter
 
-go 1.26.6
+go 1.27.0
 
 require (
 	github.com/neuvector/neuvector/controller/k8sapi v1.0.0
