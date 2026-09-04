@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"testing"
 
-	securityv1alpha1 "github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
+	securityv1alpha1 "github.com/kubewarden/runtime-enforcer/api/v1alpha1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

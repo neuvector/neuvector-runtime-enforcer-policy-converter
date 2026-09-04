@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
+	securityv1alpha1 "github.com/kubewarden/runtime-enforcer/api/v1alpha1"
 	nvv1 "github.com/neuvector/neuvector/controller/k8sapi/v1"
-	securityv1alpha1 "github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion/scheme"

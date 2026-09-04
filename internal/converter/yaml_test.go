@@ -5,9 +5,9 @@ import (
 	"context"
 	"testing"
 
+	securityv1alpha1 "github.com/kubewarden/runtime-enforcer/api/v1alpha1"
 	"github.com/neuvector/neuvector-runtime-enforcer-policy-converter/internal/converter"
 	nvv1 "github.com/neuvector/neuvector/controller/k8sapi/v1"
-	securityv1alpha1 "github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -72,7 +72,7 @@ func TestWriteWorkloadPoliciesToYAML(t *testing.T) {
 			// For non-empty cases, verify WorkloadPolicy items
 			if tt.wantCount > 0 {
 				assert.Contains(t, output, "kind: WorkloadPolicy")
-				assert.Contains(t, output, "apiVersion: security.rancher.io/v1alpha1")
+				assert.Contains(t, output, "apiVersion: runtimeenforcer.kubewarden.io/v1alpha1")
 
 				// Verify each policy appears in output
 				for _, policy := range tt.policies {
@@ -152,7 +152,7 @@ func TestWriteWorkloadPoliciesToYAML_RoundTrip(t *testing.T) {
 
 	// Verify WorkloadPolicy structure
 	assert.Contains(t, output, "kind: WorkloadPolicy")
-	assert.Contains(t, output, "apiVersion: security.rancher.io/v1alpha1")
+	assert.Contains(t, output, "apiVersion: runtimeenforcer.kubewarden.io/v1alpha1")
 
 	// Verify policy metadata
 	assert.Contains(t, output, policy.Name)
@@ -176,7 +176,7 @@ func createTestPolicy(name, namespace, mode string) *securityv1alpha1.WorkloadPo
 	rules.Executables.Allowed = []string{"/bin/bash", "/usr/bin/python"}
 
 	return &securityv1alpha1.WorkloadPolicy{
-		APIVersion: "security.rancher.io/v1alpha1",
+		APIVersion: "runtimeenforcer.kubewarden.io/v1alpha1",
 		Kind:       "WorkloadPolicy",
 		Name:       name,
 		Namespace:  namespace,

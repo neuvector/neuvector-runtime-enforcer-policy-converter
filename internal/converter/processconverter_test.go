@@ -9,9 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	securityv1alpha1 "github.com/kubewarden/runtime-enforcer/api/v1alpha1"
+
 	"github.com/neuvector/neuvector-runtime-enforcer-policy-converter/internal/converter"
 	nvv1 "github.com/neuvector/neuvector/controller/k8sapi/v1"
-	securityv1alpha1 "github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -621,7 +622,7 @@ func TestNvSecurityRuleToWorkloadPolicy(t *testing.T) {
 			ctx,
 			dynamicClient,
 			tt.nvRule.(*nvv1.NvSecurityRule),
-			securityv1alpha1.PolicyModeMonitor,
+			"monitor",
 		)
 
 		if tt.wantErr {

@@ -6,7 +6,6 @@ import (
 	"context"
 	"testing"
 
-	securityv1alpha1 "github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/e2e-framework/klient/decoder"
@@ -37,7 +36,7 @@ func happyPathFeature() types.Feature {
 				policy := parseWorkloadPolicy(t, stdout)
 				assert.Equal(t, "nv.kube-proxy.kube-system", policy.Name)
 				assert.Equal(t, "kube-system", policy.Namespace)
-				assert.Equal(t, securityv1alpha1.PolicyModeMonitor, policy.Spec.Mode)
+				assert.Equal(t, "monitor", policy.Spec.Mode)
 				require.Len(t, policy.Spec.RulesByContainer, 1)
 				containerRules, ok := policy.Spec.RulesByContainer["kube-proxy"]
 				require.True(t, ok)
