@@ -1,5 +1,6 @@
-github:
-  owner: "UPDATECLI_GITHUB_OWNER"
+scm:
+  owner: "neuvector"
+  repository: "neuvector-runtime-enforcer-policy-converter"
   token: "UPDATECLI_GITHUB_TOKEN"
   branch: "main"
   author: "NeuVectorRuntimeEnforcerPolicyConverter bot"

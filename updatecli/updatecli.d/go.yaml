@@ -2,6 +2,10 @@ name: Update Golang version
 
 pipelineid: golang/version
 
+labels:
+  monitor: active
+  ecosystem: golang
+
 sources:
   go:
     name: Get latest Golang version
@@ -32,8 +36,7 @@ targets:
     spec:
       file: .pre-commit-config.yaml
       keys:
-        - $.repos[0].hooks[0].language_version
-        - $.repos[0].hooks[1].language_version
+        - $.repos[*].hooks[*].language_version
 
 actions:
   default:
@@ -41,7 +44,8 @@ actions:
     kind: github/pullrequest
     scmid: default
     spec:
-      automerge: false
+      merge:
+        strategy: manual
       mergemethod: squash
       description: |
         Automatic Golang version {{ source "go" }} update.
@@ -56,17 +60,14 @@ scms:
   default:
     kind: github
     spec:
-      user: "{{ .github.author }}"
-      email: "{{ .github.email }}"
-      owner: "{{ requiredEnv .github.owner }}"
-      repository: "neuvector-runtime-enforcer-policy-converter"
-      token: "{{ requiredEnv .github.token }}"
-      username: "{{ requiredEnv .github.user }}"
-      branch: "{{ .github.branch }}"
+      user: "{{ .scm.author }}"
+      email: "{{ .scm.email }}"
+      owner: "{{ .scm.owner }}"
+      repository: "{{ .scm.repository }}"
+      branch: "{{ .scm.branch }}"
       commitusingapi: true
       commitmessage:
         type: "chore"
         scope: deps
-        title: "update Golang version"
         hidecredit: true
         footers: "Signed-off-by: NeuVectorRuntimeEnforcerPolicyConverter bot <neuvector-runtime-enforcer-policy-converter-bot@users.noreply.github.com>"
