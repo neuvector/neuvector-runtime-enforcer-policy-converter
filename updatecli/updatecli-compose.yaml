@@ -33,9 +33,6 @@ policies:
         rules:
           secrets-outside-env:
             disable: true
-      autofix:
-        enabled: true
-        mode: all
 
   - name: Install Typos
     id: typos
