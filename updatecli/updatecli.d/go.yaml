@@ -35,6 +35,7 @@ targets:
     scmid: default
     spec:
       file: .pre-commit-config.yaml
+      engine: yamlpath
       keys:
         - $.repos[*].hooks[*].language_version
 
