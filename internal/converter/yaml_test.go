@@ -13,7 +13,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion/scheme"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 )
 
@@ -103,14 +102,10 @@ func TestWriteWorkloadPoliciesToYAML_RoundTrip(t *testing.T) {
 	// Create a WorkloadPolicy using the real conversion function
 	ctx := context.Background()
 	deployment := &appsv1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "apps/v1",
-			Kind:       "Deployment",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "default",
-		},
+		APIVersion: "apps/v1",
+		Kind:       "Deployment",
+		Name:       "test-deployment",
+		Namespace:  "default",
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
@@ -125,10 +120,8 @@ func TestWriteWorkloadPoliciesToYAML_RoundTrip(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme, deployment)
 
 	nvrule := &nvv1.NvSecurityRule{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "nv.test-deployment.default",
-			Namespace: "default",
-		},
+		Name:      "nv.test-deployment.default",
+		Namespace: "default",
 		Spec: nvv1.NvSecurityRuleSpec{
 			Target: nvv1.NvSecurityTarget{
 				Selector: nvv1.GroupConfig{
@@ -183,14 +176,10 @@ func createTestPolicy(name, namespace, mode string) *securityv1alpha1.WorkloadPo
 	rules.Executables.Allowed = []string{"/bin/bash", "/usr/bin/python"}
 
 	return &securityv1alpha1.WorkloadPolicy{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "security.rancher.io/v1alpha1",
-			Kind:       "WorkloadPolicy",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
+		APIVersion: "security.rancher.io/v1alpha1",
+		Kind:       "WorkloadPolicy",
+		Name:       name,
+		Namespace:  namespace,
 		Spec: securityv1alpha1.WorkloadPolicySpec{
 			Mode: mode,
 			RulesByContainer: map[string]*securityv1alpha1.WorkloadPolicyRules{
