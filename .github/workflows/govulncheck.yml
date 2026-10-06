@@ -26,7 +26,7 @@ jobs:
           check-latest: true # Always check for the latest patch release
       - name: Run govulncheck
         env:
-          GOVULNCHECK_VERSION: d1f380186385b4f64e00313f31743df8e4b89a77 # v1.1.4
+          GOVULNCHECK_VERSION: 709015412431dd2b5b28a53c06c70bc02d49074c # v1.8.0
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }}
           govulncheck -C . -format text ./...
