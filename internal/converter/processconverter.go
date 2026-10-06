@@ -487,10 +487,8 @@ func NvSecurityRuleToWorkloadPolicy(
 	}
 
 	ret := &securityv1alpha1.WorkloadPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      nvrule.Name,
-			Namespace: nvrule.Namespace,
-		},
+		Name:      nvrule.Name,
+		Namespace: nvrule.Namespace,
 		Spec: securityv1alpha1.WorkloadPolicySpec{
 			Mode: mode,
 			RulesByContainer: map[string]*securityv1alpha1.WorkloadPolicyRules{
