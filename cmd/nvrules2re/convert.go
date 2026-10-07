@@ -7,11 +7,17 @@ import (
 	"os"
 	"slices"
 
+	"github.com/kubewarden/runtime-enforcer/api/v1alpha1"
 	"github.com/neuvector/neuvector-runtime-enforcer-policy-converter/internal/converter"
 	v1 "github.com/neuvector/neuvector/controller/k8sapi/v1"
-	"github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	"github.com/urfave/cli/v3"
 	"k8s.io/client-go/dynamic"
+)
+
+// Valid values for the --mode CLI flag, matching the WorkloadPolicy spec.mode field.
+const (
+	policyModeMonitor = "monitor"
+	policyModeProtect = "protect"
 )
 
 func convertFile(
@@ -67,7 +73,7 @@ func convertAction(ctx context.Context, c *cli.Command) error {
 
 	// Get and validate mode flag
 	mode := c.String("mode")
-	if mode != v1alpha1.PolicyModeMonitor && mode != v1alpha1.PolicyModeProtect {
+	if mode != policyModeMonitor && mode != policyModeProtect {
 		return fmt.Errorf("invalid mode %q: must be 'monitor' or 'protect'", mode)
 	}
 

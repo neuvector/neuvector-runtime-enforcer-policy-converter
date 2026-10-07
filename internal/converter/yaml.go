@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	securityv1alpha1 "github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
+	securityv1alpha1 "github.com/kubewarden/runtime-enforcer/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"

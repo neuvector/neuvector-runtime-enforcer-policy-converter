@@ -1,8 +1,8 @@
 # nvrules2re
 
-**nvrules2re** is a CLI tool that converts [NeuVector](https://open-docs.neuvector.com/policy/processrules) Process Profile Rules into [Runtime Enforcer](https://github.com/rancher-sandbox/runtime-enforcer).
+**nvrules2re** is a CLI tool that converts [NeuVector](https://open-docs.neuvector.com/policy/processrules) Process Profile Rules into [Kubewarden Runtime Enforcer](https://github.com/kubewarden/runtime-enforcer).
 
-This tool simplifies the migration from NeuVector's Process Profile rules to [Runtime Enforcer](https://github.com/rancher-sandbox/runtime-enforcer) — a universal policy engine for Kubernetes that streamlines the adoption of policy-as-code practices.
+This tool simplifies the migration from NeuVector's Process Profile rules to [Kubewarden Runtime Enforcer](https://github.com/kubewarden/runtime-enforcer) — a universal policy engine for Kubernetes that streamlines the adoption of policy-as-code practices.
 
 ## Features
 
@@ -117,7 +117,7 @@ spec:
     metadata:
       labels:
         app: ubuntu
-        security.rancher.io/policy: workloadpolicy-sample # replace with the WorkloadPolicy name.
+        runtimeenforcer.kubewarden.io/policy: workloadpolicy-sample # replace with the WorkloadPolicy name.
     spec:
       containers:
       - name: ubuntu
