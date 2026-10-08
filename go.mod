@@ -3,7 +3,7 @@ module github.com/neuvector/neuvector-runtime-enforcer-policy-converter
 go 1.27.1
 
 require (
-	github.com/kubewarden/runtime-enforcer v0.10.0
+	github.com/kubewarden/runtime-enforcer v0.10.1
 	github.com/neuvector/neuvector/controller/k8sapi v1.0.0
 	github.com/stretchr/testify v1.12.1
 	github.com/urfave/cli/v3 v3.13.0
