@@ -6,7 +6,7 @@ require (
 	github.com/kubewarden/runtime-enforcer v0.10.0
 	github.com/neuvector/neuvector/controller/k8sapi v1.0.0
 	github.com/stretchr/testify v1.12.1
-	github.com/urfave/cli/v3 v3.13.0
+	github.com/urfave/cli/v3 v3.14.0
 	k8s.io/api v0.37.1
 	k8s.io/apimachinery v0.37.1
 	k8s.io/client-go v0.37.1
