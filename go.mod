@@ -1,6 +1,6 @@
 module github.com/neuvector/neuvector-runtime-enforcer-policy-converter
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/kubewarden/runtime-enforcer v0.10.1
